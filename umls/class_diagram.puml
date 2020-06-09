@@ -1,0 +1,54 @@
+@startuml "Class Diagram"
+class "Code Instance" <<(V,grey) VS Code>>
+package "Extension Client" {
+    class MROExtClient {
+        activate()
+        deactivate()
+        ==
+        Use a client instance, a client
+        option and a server option to
+        start the MRO language server
+        and delegate all functions to it
+    }
+    class LanguageClient
+    MROExtClient o-u- LanguageClient
+    class LanguageClientOptions
+    MROExtClient o-- LanguageClientOptions
+    class ServerOptions
+    MROExtClient o-- ServerOptions
+}
+package "Extension Server" {
+    class MROLanguageServer{
+        onInitialise()
+        onStateChanges()
+        onCodeLens()
+        onCodeLensResolve()
+        onHover()
+        updateInfoCache()
+        ==
+        onStateChanges() represents
+        the callbacks for various
+        state changes.
+    }
+    interface LanguageServerProtocol
+    hide LanguageServerProtocol members
+    MROLanguageServer -u-^ LanguageServerProtocol
+    class JediWrapper {
+        A wrapper class to facilitate
+        the use of the "jedi" library.
+    }
+    hide JediWrapper methods
+    MROLanguageServer o-- JediWrapper
+    class C3Linearisation {
+        calcMRO()
+        ==
+        Implementing the C3 Linearisation
+        to calculate the MRO list. Class
+        information will be cached for
+        fast calculation.
+    }
+    MROLanguageServer o-- C3Linearisation
+}
+"Code Instance" -r-> MROExtClient : CodeLens/Hover
+MROExtClient -r- MROLanguageServer
+@enduml
