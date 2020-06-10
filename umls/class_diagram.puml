@@ -1,4 +1,4 @@
-@startuml "Class Diagram"
+@startuml class_diagram
 class "Code Instance" <<(V,grey) VS Code>>
 package "Extension Client" {
     class MROExtClient {
@@ -24,7 +24,6 @@ package "Extension Server" {
         onCodeLens()
         onCodeLensResolve()
         onHover()
-        updateInfoCache()
         ==
         onStateChanges() represents
         the callbacks for various
@@ -34,10 +33,11 @@ package "Extension Server" {
     hide LanguageServerProtocol members
     MROLanguageServer -u-^ LanguageServerProtocol
     class JediWrapper {
+        fetchDirectParentClasses()
+        ==
         A wrapper class to facilitate
         the use of the "jedi" library.
     }
-    hide JediWrapper methods
     MROLanguageServer o-- JediWrapper
     class C3Linearisation {
         calcMRO()
@@ -48,6 +48,16 @@ package "Extension Server" {
         fast calculation.
     }
     MROLanguageServer o-- C3Linearisation
+    class AnalysisCache {
+        updateCache()
+        invalidateCache()
+        ==
+        To speed up the calculation
+        and need to invalidate
+        outdated caches by listening
+        to the document changes.
+    }
+    MROLanguageServer o-u- AnalysisCache
 }
 "Code Instance" -r-> MROExtClient : CodeLens/Hover
 MROExtClient -r- MROLanguageServer

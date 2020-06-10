@@ -1,4 +1,4 @@
-@startuml "Use Case Diagram"
+@startuml use_case_diagram
 actor User
 package "Python MRO Extension" {
     rectangle "CodeLens" {
