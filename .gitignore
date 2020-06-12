@@ -1,0 +1,8 @@
+# ignore vscode extension relevant files
+out
+node_modules
+.vscode-test/
+*.vsix
+
+# ignore python relevant files
+__pycache__
