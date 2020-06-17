@@ -1,0 +1,21 @@
+{
+    "name": "python-mro-server",
+    "description": "The server part of the Python MRO extension",
+    "author": {
+        "name": "Kaiyan"
+    },
+    "license": "MIT",
+    "version": "0.0.1",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mosckital/vscode_python_mro"
+    },
+    "engines": {
+        "node": "*"
+    },
+    "dependencies": {
+        "vscode-languageserver": "^6.1.1",
+        "vscode-languageserver-textdocument": "^1.0.1"
+    },
+    "devDependencies": {}
+}
