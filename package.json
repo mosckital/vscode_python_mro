@@ -35,9 +35,26 @@
 					"type": "boolean",
 					"description": "Enable to show the actual fulfilling class when hovering over a method calling from a class or an object of which type can be inferred",
 					"default": "true"
+				},
+				"pythonMRO.trace.server": {
+					"scope": "window",
+					"type": "string",
+					"enum": [
+						"off",
+						"messages",
+						"verbose"
+					],
+					"default": "verbose",
+					"description": "Traces the communication between VS Code and the language server."
 				}
 			}
-		}
+		},
+		"commands": [
+			{
+				"command": "pythonMRO.showMRO",
+				"title": "Show MRO list"
+			}
+		]
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
