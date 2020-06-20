@@ -5,6 +5,7 @@
 	"author": {
 		"name": "Kaiyan"
 	},
+	"publisher": "kaiyan",
 	"version": "0.0.1",
 	"license": "MIT",
 	"repository": {
@@ -44,7 +45,7 @@
 						"messages",
 						"verbose"
 					],
-					"default": "verbose",
+					"default": "off",
 					"description": "Traces the communication between VS Code and the language server."
 				}
 			}
@@ -61,7 +62,7 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ../server && npm install && cd ..",
-		"test": "sh ./scripts/e2e.sh"
+		"test": "sh ./tests/e2e.sh"
 	},
 	"devDependencies": {
 		"@types/vscode": "^1.46.0",
