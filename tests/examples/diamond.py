@@ -7,16 +7,48 @@ T = TypeVar('T')  # generic type for data
 
 
 class A(Generic[T]):
-    pass
+    
+    def func_a(self):
+        pass
+
+    def func_ab(self):
+        pass
+
+    def func_ac(self):
+        pass
+
+    def func_ad(self):
+        pass
 
 
 class B(A):
-    pass
+    
+    def func_b(self):
+        pass
+
+    def func_bd(self):
+        pass
+
+    def func_ab(self):
+        return super().func_ab()
 
 
 class C(A):
-    pass
+    
+    def func_c(self):
+        pass
+
+    def func_cd(self):
+        pass
+
+    def func_ac(self):
+        return super().func_ac()
 
 
 class D(B, C):
-    pass
+    
+    def func_d(self):
+        pass
+
+    def func_ad(self):
+        return super().func_ad()
