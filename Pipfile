@@ -9,6 +9,7 @@ mypy = "*"
 [packages]
 python-jsonrpc-server = "*"
 tornado = "*"
+websockets = "*"
 
 [requires]
 python_version = "3.7"
