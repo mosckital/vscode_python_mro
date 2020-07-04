@@ -67,10 +67,18 @@ class LanguageServerWebSocketHandler(websocket.WebSocketHandler):
 	def on_message(self, message):
 		"""Forward client->server messages to the endpoint."""
 		log.info("Received message: {}".format(message))
-		self.endpoint.consume(json.loads(message))
+		print("Received message: {}".format(message))
+		# self.endpoint.consume(json.loads(message))
+		self.endpoint.consume(self._read_message(message))
+	
+	def _read_message(self, message):
+		lines = message.split('\r\n')
+		lines = [l.strip() for l in lines]
+		print(lines)
+		return json.loads(lines[-1])
 
 	def check_origin(self, origin):
-		return False
+		return True
 
 
 if __name__ == "__main__":
