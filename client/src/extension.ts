@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as net from 'net';
 import {
     LanguageClient, ServerOptions, TransportKind, LanguageClientOptions
 } from 'vscode-languageclient';
@@ -14,14 +15,16 @@ export function activate(context: ExtensionContext) {
     let debugOptions = {
         execArgv: ['--nolazy', '--inspect=6009']
     };
-    // all possible server options, currently two: run mode & debug mode
-    let serverOptions: ServerOptions = {
-        run: {module: serverModule, transport: TransportKind.ipc},
-        debug: {
-            module: serverModule,
-            transport: TransportKind.ipc,
-            options: debugOptions
-        }
+    const serverOptions: ServerOptions = function() {
+		return new Promise((resolve, reject) => {
+            var socketClient = new net.Socket();
+			socketClient.connect(3000, "127.0.0.1", function() {
+				resolve({
+                    reader: socketClient,
+                    writer: socketClient
+				});
+			});
+		});
     };
     // the language client options
     let clientOptions: LanguageClientOptions = {
