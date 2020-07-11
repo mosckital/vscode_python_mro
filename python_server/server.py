@@ -2,6 +2,7 @@ import logging
 import os
 import socketserver
 import threading
+import re
 from functools import partial
 from pyls_jsonrpc.dispatchers import MethodDispatcher
 from pyls_jsonrpc.endpoint import Endpoint
@@ -81,6 +82,7 @@ class PythonLanguageServer(MethodDispatcher):
 		self._jsonrpc_stream_writer = JsonRpcStreamWriter(tx)
 		self._check_parent_process = check_parent_process
 		self._endpoint = Endpoint(self, self._jsonrpc_stream_writer.write, max_workers=MAX_WORKERS)
+		self._docs = dict()
 
 	def start(self):
 		"""Entry point for the server."""
@@ -99,6 +101,9 @@ class PythonLanguageServer(MethodDispatcher):
 			"hoverProvider": True,
 		}}
 	
+	def m_text_document__did_open(self, textDocument=None):
+		self._docs[textDocument['uri']] = textDocument
+	
 	def m_text_document__hover(self, textDocument=None, position=None, **_kwargs):
 		return {
 			'contents': [
@@ -110,19 +115,34 @@ class PythonLanguageServer(MethodDispatcher):
 			],
 		}
 	
+	@staticmethod
+	def find_class_in_text_document(text: str):
+		lenses = []
+		lines = text.splitlines()
+		for idx, line in enumerate(lines):
+			for match in re.finditer(r'\bclass\b', line):
+				lenses.append({
+					'range': {
+						'start': {
+							'line': idx,
+							'character': match.start(),
+						},
+						'end': {
+							'line': idx,
+							'character': match.end(),
+						}
+					}
+				})
+		return lenses
+	
 	def m_text_document__code_lens(self, textDocument=None, **_kwargs):
-		return [{
-			'range': {
-				'start': {
-					'line': 1,
-					'character': 3,
-				},
-				'end': {
-					'line': 1,
-					'character': 6,
-				}
-			}
-		}]
+		uri = textDocument['uri']
+		if uri in self._docs:
+			document = self._docs[uri]
+			text = document['text']
+			return self.find_class_in_text_document(text)
+		else:
+			return None
 	
 	def m_code_lens__resolve(self, **codeLens):
 		codeLens['command'] = {
