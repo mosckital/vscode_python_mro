@@ -93,7 +93,8 @@ class PythonLanguageServer(MethodDispatcher):
 		return {"capabilities": {
 			"textDocumentSync": {
 				"openClose": True,
-				"change": 2,  # TextDocumentSyncKind.Incremental = 2
+				# "change": 2,  # TextDocumentSyncKind.Incremental = 2
+				"change": 1,  # TextDocumentSyncKind.Full = 1
 			},
 			"codeLensProvider": {
 				"resolveProvider": True,
@@ -102,7 +103,12 @@ class PythonLanguageServer(MethodDispatcher):
 		}}
 	
 	def m_text_document__did_open(self, textDocument=None):
-		self._docs[textDocument['uri']] = textDocument
+		self._docs[textDocument['uri']] = textDocument['text']
+	
+	def m_text_document__did_change(self, textDocument=None, contentChanges=None):
+		if contentChanges:
+			# print(f'Number of changes {len(contentChanges)}')
+			self._docs[textDocument['uri']] = contentChanges[0]['text']
 	
 	def m_text_document__hover(self, textDocument=None, position=None, **_kwargs):
 		return {
@@ -138,8 +144,9 @@ class PythonLanguageServer(MethodDispatcher):
 	def m_text_document__code_lens(self, textDocument=None, **_kwargs):
 		uri = textDocument['uri']
 		if uri in self._docs:
-			document = self._docs[uri]
-			text = document['text']
+			# document = self._docs[uri]
+			# text = document['text']
+			text = self._docs[uri]
 			return self.find_class_in_text_document(text)
 		else:
 			return None
