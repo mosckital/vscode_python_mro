@@ -77,12 +77,16 @@ def start_tcp_lang_server(bind_addr, port, check_parent_process, handler_class):
 class PythonLanguageServer(MethodDispatcher):
 	"""Implement a JSON RPC method dispatcher for the language server protocol."""
 
+	SYNC_FULL = 1  # TextDocumentSyncKind.Full = 1
+	SYNC_INCREMENTAL = 2  # TextDocumentSyncKind.Incremental = 2
+
 	def __init__(self, rx, tx, check_parent_process=False):
 		self._jsonrpc_stream_reader = JsonRpcStreamReader(rx)
 		self._jsonrpc_stream_writer = JsonRpcStreamWriter(tx)
 		self._check_parent_process = check_parent_process
 		self._endpoint = Endpoint(self, self._jsonrpc_stream_writer.write, max_workers=MAX_WORKERS)
 		self._docs = dict()
+		self._sync_kind = self.SYNC_INCREMENTAL
 
 	def start(self):
 		"""Entry point for the server."""
@@ -93,8 +97,7 @@ class PythonLanguageServer(MethodDispatcher):
 		return {"capabilities": {
 			"textDocumentSync": {
 				"openClose": True,
-				# "change": 2,  # TextDocumentSyncKind.Incremental = 2
-				"change": 1,  # TextDocumentSyncKind.Full = 1
+				"change": self._sync_kind,
 			},
 			"codeLensProvider": {
 				"resolveProvider": True,
@@ -103,12 +106,42 @@ class PythonLanguageServer(MethodDispatcher):
 		}}
 	
 	def m_text_document__did_open(self, textDocument=None):
-		self._docs[textDocument['uri']] = textDocument['text']
+		self._docs[textDocument['uri']] = self._split_lines(textDocument['text'])
 	
 	def m_text_document__did_change(self, textDocument=None, contentChanges=None):
-		if contentChanges:
-			# print(f'Number of changes {len(contentChanges)}')
-			self._docs[textDocument['uri']] = contentChanges[0]['text']
+		if not contentChanges:
+			return
+		if self._sync_kind == self.SYNC_FULL:
+			self._docs[textDocument['uri']] = self._split_lines(contentChanges[0]['text'])
+		elif self._sync_kind == self.SYNC_INCREMENTAL:
+			for change in contentChanges:
+				print(f'Change:\n{change}')
+				self._incremental_update(textDocument['uri'], change)
+	
+	def _incremental_update(self, uri, change):
+		lines = self._docs[uri]
+		print(f'Original lines:\n{lines}')
+		start = change['range']['start']
+		start_line, start_char = start['line'], start['character']
+		end = change['range']['end']
+		end_line, end_char = end['line'], end['character']
+		update_lines = self._split_lines(change['text'])
+		print(f'Updated lines:\n{update_lines}')
+		new_lines = []
+		new_lines.extend(lines[:start_line])
+		new_lines.append(lines[start_line][:start_char] + (update_lines[0] if update_lines else ''))
+		new_lines.extend(update_lines[1:])
+		new_lines[-1] += lines[end_line][end_char:]
+		new_lines.extend(lines[end_line + 1:])
+		self._docs[uri] = new_lines
+		print(f'New lines:\n{new_lines}')
+	
+	@staticmethod
+	def _split_lines(text):
+		lines = text.splitlines()
+		if not text or text[-1] == '\n':
+			lines.append('')
+		return lines
 	
 	def m_text_document__hover(self, textDocument=None, position=None, **_kwargs):
 		return {
@@ -122,9 +155,8 @@ class PythonLanguageServer(MethodDispatcher):
 		}
 	
 	@staticmethod
-	def find_class_in_text_document(text: str):
+	def find_class_in_text_document(lines):
 		lenses = []
-		lines = text.splitlines()
 		for idx, line in enumerate(lines):
 			for match in re.finditer(r'\bclass\b', line):
 				lenses.append({
@@ -146,8 +178,8 @@ class PythonLanguageServer(MethodDispatcher):
 		if uri in self._docs:
 			# document = self._docs[uri]
 			# text = document['text']
-			text = self._docs[uri]
-			return self.find_class_in_text_document(text)
+			lines = self._docs[uri]
+			return self.find_class_in_text_document(lines)
 		else:
 			return None
 	
