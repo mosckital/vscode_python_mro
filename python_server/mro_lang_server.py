@@ -90,46 +90,60 @@ class MROLanguageServer(MethodDispatcher):
 		if not text or text[-1] == '\n':
 			lines.append('')
 		return lines
-
-	@staticmethod
-	def find_class_in_text_document(lines):
-		lenses = []
+	
+	def update_code_lenses(self, uri):
+		"""Update the code lenses in the document of the given uri."""
+		lines = self._docs[uri]
+		self._found_lenses[uri] = []
 		for idx, line in enumerate(lines):
-			for match in re.finditer(r'\bclass\b', line):
-				lenses.append({
+			for match in re.finditer(r'\bclass (\w+)\b', line):
+				self._found_lenses[uri].append({
 					'range': {
 						'start': {
 							'line': idx,
-							'character': match.start(),
+							'character': match.start(1),
 						},
 						'end': {
 							'line': idx,
-							'character': match.end(),
+							'character': match.end(1),
 						}
-					}
+					},
+					'data': [
+						'Target class name',
+						'Parent class 1',
+						'Parent class 2',
+						'...',
+						'Object',
+					],
 				})
-		return lenses
+	
+	@staticmethod
+	def is_pos_in_range(pos, ran):
+		"""Check if a position is within a range."""
+		ran_start = ran['start']
+		ran_end = ran['end']
+		if pos['line'] < ran_start['line'] or pos['line'] > ran_end['line']:
+			return False
+		if pos['line'] == ran_start['line'] and pos['character'] < ran_start['character']:
+			return False
+		if pos['line'] == ran_end['line'] and pos['character'] >= ran_end['character']:
+			return False
+		return True
 
 	def m_text_document__hover(self, textDocument=None, position=None, **_kwargs):
 		"""Calculate and return the hover result."""
-		return {
-			'contents': [
-				'Target class name',
-				'Parent class 1',
-				'Parent class 2',
-				'...',
-				'Object',
-			],
-		}
+		for lens in self._found_lenses[textDocument['uri']]:
+			if self.is_pos_in_range(position, lens['range']):
+				return {
+					'contents': lens['data'],
+				}
+		return None
 	
 	def m_text_document__code_lens(self, textDocument=None, **_kwargs):
 		"""Calculate and return the code lens list."""
 		uri = textDocument['uri']
-		if uri in self._docs:
-			lines = self._docs[uri]
-			return self.find_class_in_text_document(lines)
-		else:
-			return None
+		self.update_code_lenses(uri)
+		return self._found_lenses[uri]
 	
 	def m_code_lens__resolve(self, **codeLens):
 		"""Fill up the details of a code lens."""
@@ -137,7 +151,7 @@ class MROLanguageServer(MethodDispatcher):
 			'command': 'pythonMRO.showMRO',
 			'title': 'Show MRO list',
 			'arguments': [
-				'Fake MRO List L1\nFake MRO List L2\nFake MRO List L3'
+				'\n'.join(codeLens['data']),
 			]
 		}
 		return codeLens
