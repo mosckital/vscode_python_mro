@@ -21,7 +21,7 @@ export async function activate(docUri: vscode.Uri) {
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		await sleep(2000); // Wait for server activation
+		// await sleep(2000); // Wait for server activation
 	} catch (e) {
 		console.error(e);
 	}
@@ -44,4 +44,40 @@ export async function setTestContent(content: string): Promise<boolean> {
 		doc.positionAt(doc.getText().length)
 	);
 	return editor.edit(eb => eb.replace(all, content));
+}
+
+export const checkDummyMROContent = (contents: vscode.MarkedString[]) => {
+	let firstLine = contents[0];
+	let firstLineContent: string;
+	if (typeof firstLine === 'string') {
+		firstLineContent = firstLine;
+	} else {
+		firstLineContent = firstLine.value;
+	}
+	if (firstLineContent === 'Target class name') {
+		return true;
+	} else {
+		return false;
+	}
+};
+
+let dummyNewContent = `
+
+
+class Test:
+	pass
+`;
+
+export async function addContent(docUri: vscode.Uri) {
+	try {
+		let doc = await vscode.workspace.openTextDocument(docUri);
+		let editor = await vscode.window.showTextDocument(doc);
+		editor.edit(builder => {
+			let nLines = doc.lineCount;
+			let nCharLastLine = doc.lineAt(nLines - 1).text.length;
+			builder.insert(new vscode.Position(nLines, nCharLastLine), dummyNewContent);
+		});
+	} catch (e) {
+		console.error(e);
+	}
 }
