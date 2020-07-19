@@ -11,6 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        python-version: [3.7, 3.8]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -20,6 +21,14 @@ jobs:
       with:
         node-version: 10.x
     - run: npm install
+    - name: Install Python
+      uses: actions/setup-python@2
+      with:
+        python-version: ${{matrix.python-version}}
+    - name: Install pipenv
+      run: pip install pipenv
+    - name: Install python packages
+      run: pipenv sync
     - name: Run tests
       uses: GabrielBB/xvfb-action@v1.2
       with:
