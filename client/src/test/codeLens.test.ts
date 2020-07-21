@@ -25,7 +25,7 @@ async function testCodeLens(
 		'vscode.executeCodeLensProvider',
 		docUri
 	)) as vscode.CodeLens[];
-	assert.ok(actualCodeLenses.length === expectedCodeLensNumber);
+	assert.equal(actualCodeLenses.length, expectedCodeLensNumber);
 	// resolve the code lenses and check the contents are correct
 	actualCodeLenses = (await vscode.commands.executeCommand(
 		'vscode.executeCodeLensProvider',

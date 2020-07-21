@@ -10,6 +10,7 @@ export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
 export let documentEol: string;
 export let platformEol: string;
+let isMROServerUp : boolean;
 
 /**
  * Activates the vscode.lsp-sample extension
@@ -21,10 +22,26 @@ export async function activate(docUri: vscode.Uri) {
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		// await sleep(2000); // Wait for server activation
+		// Wait for server activation
+		let startCheckTime = Date.now();
+		while (!isMROServerUp) {
+			isMROServerUp = await checkMROServerUpByDoc(docUri);
+			await sleep(500);
+			if (Date.now() - startCheckTime > 10 * 1000) {
+				break;
+			}
+		}
 	} catch (e) {
 		console.error(e);
 	}
+}
+
+async function checkMROServerUpByDoc(docUri: vscode.Uri) {
+	let actualCodeLenses = (await vscode.commands.executeCommand(
+		'vscode.executeCodeLensProvider',
+		docUri
+	)) as vscode.CodeLens[];
+	return actualCodeLenses.length > 0;
 }
 
 async function sleep(ms: number) {
