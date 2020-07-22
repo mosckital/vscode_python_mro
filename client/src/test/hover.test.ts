@@ -47,12 +47,14 @@ async function testHover(
 	hoverPosition: vscode.Position,
 	should_hover: boolean
 ) {
+	// check if the number of returned hover results is correct
 	const actualHoverResults = (await vscode.commands.executeCommand(
 		'vscode.executeHoverProvider',
 		docUri,
 		hoverPosition,
 	)) as vscode.Hover[];
 	assert.equal(actualHoverResults.length > 0, should_hover);
+	// check if the content of the returned hover is correct
 	if (!should_hover) {
 		return;
 	}

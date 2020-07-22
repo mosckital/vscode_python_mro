@@ -10,10 +10,12 @@ export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
 export let documentEol: string;
 export let platformEol: string;
+
+// module-level variables
 let isMROServerUp : boolean;
 
 /**
- * Activates the vscode.lsp-sample extension
+ * Activates the Python MRO extension
  */
 export async function activate(docUri: vscode.Uri) {
 	// The extensionId is `publisher.name` from package.json
@@ -22,7 +24,7 @@ export async function activate(docUri: vscode.Uri) {
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		// Wait for server activation
+		// Wait for server start-up, timeout is 10s
 		let startCheckTime = Date.now();
 		while (!isMROServerUp) {
 			isMROServerUp = await checkMROServerUpByDoc(docUri);
@@ -36,6 +38,10 @@ export async function activate(docUri: vscode.Uri) {
 	}
 }
 
+/**
+ * Check if the Python MRO server is up by checking code lens reply of the given doc.
+ * @param docUri the uri of the document
+ */
 async function checkMROServerUpByDoc(docUri: vscode.Uri) {
 	let actualCodeLenses = (await vscode.commands.executeCommand(
 		'vscode.executeCodeLensProvider',
@@ -44,7 +50,7 @@ async function checkMROServerUpByDoc(docUri: vscode.Uri) {
 	return actualCodeLenses.length > 0;
 }
 
-async function sleep(ms: number) {
+export async function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -63,6 +69,10 @@ export async function setTestContent(content: string): Promise<boolean> {
 	return editor.edit(eb => eb.replace(all, content));
 }
 
+/**
+ * Check if the given contents are dummy MRO content.
+ * @param contents the contents to check
+ */
 export const checkDummyMROContent = (contents: vscode.MarkedString[]) => {
 	let firstLine = contents[0];
 	let firstLineContent: string;
@@ -78,6 +88,7 @@ export const checkDummyMROContent = (contents: vscode.MarkedString[]) => {
 	}
 };
 
+// dummy content to populate into test docs for testing
 let dummyNewContent = `
 
 
@@ -85,6 +96,10 @@ class Test:
 	pass
 `;
 
+/**
+ * Add dummy content to a doc for testing purpose.
+ * @param docUri the uri of the doc to add dummy content
+ */
 export async function addContent(docUri: vscode.Uri) {
 	try {
 		let doc = await vscode.workspace.openTextDocument(docUri);
