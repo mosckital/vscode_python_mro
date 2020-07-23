@@ -11,8 +11,11 @@ export let editor: vscode.TextEditor;
 export let documentEol: string;
 export let platformEol: string;
 
+// module-level variables
+let isMROServerUp : boolean;
+
 /**
- * Activates the vscode.lsp-sample extension
+ * Activates the Python MRO extension
  */
 export async function activate(docUri: vscode.Uri) {
 	// The extensionId is `publisher.name` from package.json
@@ -21,13 +24,33 @@ export async function activate(docUri: vscode.Uri) {
 	try {
 		doc = await vscode.workspace.openTextDocument(docUri);
 		editor = await vscode.window.showTextDocument(doc);
-		await sleep(2000); // Wait for server activation
+		// Wait for server start-up, timeout is 10s
+		let startCheckTime = Date.now();
+		while (!isMROServerUp) {
+			isMROServerUp = await checkMROServerUpByDoc(docUri);
+			await sleep(500);
+			if (Date.now() - startCheckTime > 10 * 1000) {
+				break;
+			}
+		}
 	} catch (e) {
 		console.error(e);
 	}
 }
 
-async function sleep(ms: number) {
+/**
+ * Check if the Python MRO server is up by checking code lens reply of the given doc.
+ * @param docUri the uri of the document
+ */
+async function checkMROServerUpByDoc(docUri: vscode.Uri) {
+	let actualCodeLenses = (await vscode.commands.executeCommand(
+		'vscode.executeCodeLensProvider',
+		docUri
+	)) as vscode.CodeLens[];
+	return actualCodeLenses.length > 0;
+}
+
+export async function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
@@ -44,4 +67,49 @@ export async function setTestContent(content: string): Promise<boolean> {
 		doc.positionAt(doc.getText().length)
 	);
 	return editor.edit(eb => eb.replace(all, content));
+}
+
+/**
+ * Check if the given contents are dummy MRO content.
+ * @param contents the contents to check
+ */
+export const checkDummyMROContent = (contents: vscode.MarkedString[]) => {
+	let firstLine = contents[0];
+	let firstLineContent: string;
+	if (typeof firstLine === 'string') {
+		firstLineContent = firstLine;
+	} else {
+		firstLineContent = firstLine.value;
+	}
+	if (firstLineContent === 'Target class name') {
+		return true;
+	} else {
+		return false;
+	}
+};
+
+// dummy content to populate into test docs for testing
+let dummyNewContent = `
+
+
+class Test:
+	pass
+`;
+
+/**
+ * Add dummy content to a doc for testing purpose.
+ * @param docUri the uri of the doc to add dummy content
+ */
+export async function addContent(docUri: vscode.Uri) {
+	try {
+		let doc = await vscode.workspace.openTextDocument(docUri);
+		let editor = await vscode.window.showTextDocument(doc);
+		editor.edit(builder => {
+			let nLines = doc.lineCount;
+			let nCharLastLine = doc.lineAt(nLines - 1).text.length;
+			builder.insert(new vscode.Position(nLines, nCharLastLine), dummyNewContent);
+		});
+	} catch (e) {
+		console.error(e);
+	}
 }
