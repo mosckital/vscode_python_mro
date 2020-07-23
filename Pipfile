@@ -8,6 +8,3 @@ mypy = "*"
 
 [packages]
 python-jsonrpc-server = "*"
-
-[requires]
-python_version = "3.7"
