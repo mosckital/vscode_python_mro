@@ -5,6 +5,8 @@ verify_ssl = true
 
 [dev-packages]
 mypy = "*"
+pytest = "*"
 
 [packages]
 python-jsonrpc-server = "*"
+jedi = "*"
