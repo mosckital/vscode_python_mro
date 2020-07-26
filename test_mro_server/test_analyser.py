@@ -38,5 +38,5 @@ class TestMROAnalyser:
         script_uri = pathlib.Path(script_path).as_uri()
         with open(script_path) as script:
             analyser.replace_script_content(script_uri, script.read())
-            assert (analyser.fetch_hover(script_uri, (line, char))
+            assert (analyser.update_fetch_hover(script_uri, (line, char))
                     is not None) == expected

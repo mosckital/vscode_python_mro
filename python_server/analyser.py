@@ -22,8 +22,6 @@ class MROAnalyser:
         # cache the actual codes as jedi.Script does not expose the codes
         # this cache is very useful as there will be unsaved changes
         self.content_cache: Dict[str, Sequence[str]] = {}
-        # cache the jedi.Script which will be often updated
-        self.script_cache: Dict[str, jedi.Script] = {}
         # cache the jedi Names of the found code lens which will be updated
         # every time the script is updated
         self.lens_names: Dict[str, Sequence[Name]] = {}
@@ -41,11 +39,14 @@ class MROAnalyser:
         # add an empty line if the last character is end of line `\n`
         if not content or content[-1] == '\n':
             lines.append('')
-        # update the content cache and the script cache at the same time
-        # the code lens cache will only updated when needed
+        # update the content cache
         self.content_cache[script_uri] = lines
-        self.script_cache[script_uri] = jedi.Script(code=content)
-        self.update_code_lens_names(script_uri)
+        # to delete the outdated found lenses, the new ones will be lazily
+        # calculated when needed
+        # this may lead to better performance in case of sequence of small
+        # incremental changes
+        if script_uri in self.lens_names:
+            del self.lens_names[script_uri]
 
     def update_script_content(self, script_uri: str, change: Dict) -> None:
         """
@@ -76,20 +77,29 @@ class MROAnalyser:
         # 3. from the end of the change to the end of the old content
         new_lines[-1] += lines[end_line][end_char:]
         new_lines.extend(lines[end_line + 1:])
-        # update the content cache and the script cache at the same time
-        # the code lens cache will only updated when needed
+        # update the content cache
         self.content_cache[script_uri] = new_lines
-        self.script_cache[script_uri] = jedi.Script(code='\n'.join(new_lines))
-        self.update_code_lens_names(script_uri)
+        # to delete the outdated found lenses, the new ones will be lazily
+        # calculated when needed
+        if script_uri in self.lens_names:
+            del self.lens_names[script_uri]
 
-    def update_code_lens_names(self, script_uri: str) -> None:
+    def update_code_lens_names_if_needed(self, script_uri: str) -> None:
         """
-        To update the names of the MRO code lenses in the given script.
+        To update the names of the MRO code lenses in the given script if the
+        code lenses are not calculated with the updated content yet.
 
         Args:
             script_uri: the URI of the target script
         """
-        script = self.script_cache[script_uri]
+        if script_uri in self.lens_names:
+            # case of already updated
+            return
+        if script_uri not in self.content_cache:
+            # either the script is closed in the editor or something wrong
+            return
+        content = '\n'.join(self.content_cache[script_uri])
+        script = jedi.Script(code=content)
         script_context: Name = script.get_context()
         self.lens_names[script_uri] = [
             n for n in script.get_names()
@@ -122,15 +132,16 @@ class MROAnalyser:
         Returns:
             the list of the found MRO code lenses
         """
-        self.update_code_lens_names(script_uri)
+        self.update_code_lens_names_if_needed(script_uri)
         return [
             self.get_code_lens_from_name(n)
             for n in self.lens_names[script_uri]
         ]
 
-    def fetch_hover(self, script_uri: str, position: Tuple[int, int]) -> Dict:
+    def update_fetch_hover(self, script_uri: str, position: Tuple[int, int]) -> Dict:
         """
-        To fetch the hover information for a given position of a given script.
+        To update and fetch the hover information for a given position of a
+        given script.
 
         Args:
             script_uri: the URI of the target script
@@ -141,6 +152,7 @@ class MROAnalyser:
             the hover information conforming to the Language Server Protocol
             Hover Request
         """
+        self.update_code_lens_names_if_needed(script_uri)
         # only need to provide hover information for the declaration positions
         # of the originally defined classes
         for lens_name in self.lens_names[script_uri]:
