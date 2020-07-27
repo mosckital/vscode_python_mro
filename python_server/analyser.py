@@ -48,24 +48,28 @@ class MROAnalyser:
         if script_uri in self.lens_names:
             del self.lens_names[script_uri]
 
-    def update_script_content(self, script_uri: str, change: Dict) -> None:
+    def update_script_content(self, script_uri: str, start_pos: Tuple[int,
+                                                                      int],
+                              end_pos: Tuple[int, int], change: str) -> None:
         """
         To update the cached content of a script by an incremental change.
 
         Args:
             script_uri: the URI of the target script
-            change: the incremental change received from the client request,
-                conforming to the Language Server Protocol DidChangeTextdocument
-                Notification
+            start_pos: the start position (inclusive) of the changes, in format
+                of (line, character)
+            end_pos: the end position (exclusive) of the changes, in format of
+                (line, character)
+            change: the text of the incremental changes
         """
         # fetch the lines of the old content
         lines = self.content_cache[script_uri]
-        # decompose the incremental change
-        start = change['range']['start']
-        start_line, start_char = start['line'], start['character']
-        end = change['range']['end']
-        end_line, end_char = end['line'], end['character']
-        update_lines = self._split_lines(change['text'])
+        # decompose the start and end positions
+        start_line, start_char = start_pos
+        end_line, end_char = end_pos
+        update_lines = change.splitlines()
+        if not change or change[-1] == '\n':
+            update_lines.append('')
         # the lines of the new content is consisted of three parts:
         new_lines = []  # placeholder for the new contents
         # 1. from the start of old content to the start position of the change
@@ -138,7 +142,8 @@ class MROAnalyser:
             for n in self.lens_names[script_uri]
         ]
 
-    def update_fetch_hover(self, script_uri: str, position: Tuple[int, int]) -> Dict:
+    def update_fetch_hover(self, script_uri: str,
+                           position: Tuple[int, int]) -> Dict:
         """
         To update and fetch the hover information for a given position of a
         given script.
