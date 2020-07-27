@@ -5,6 +5,9 @@ verify_ssl = true
 
 [dev-packages]
 mypy = "*"
+pytest = "*"
+atomicwrites = "*"
 
 [packages]
 python-jsonrpc-server = "*"
+jedi = "*"
