@@ -1,4 +1,6 @@
 import jedi
+from enum import IntEnum
+from typing import Sequence, Tuple
 from jedi.api.classes import Name
 
 
@@ -18,3 +20,18 @@ class MROCalculator(type(Name)):
 		if '(' not in sig_str:
 			return []  # no parent class, only 'object'
 		return sig_str[sig_str.index('(') + 1 : len(sig_str) - 1]
+
+
+class Bracket(IntEnum):
+
+	ROUND = 1
+	SQUARE = 2
+	CURLY = 3
+
+
+class ParentClass:
+
+	def __init__(self, name: str, pos: Tuple[int, int]) -> None:
+		self.name = name
+		self.pos = pos
+		self.params : Sequence[Tuple[Bracket, Sequence[ParentClass]]] = None

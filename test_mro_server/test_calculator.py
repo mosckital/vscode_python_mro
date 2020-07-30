@@ -1,6 +1,5 @@
 import pytest
 import jedi
-import os.path as path
 from os import path
 from jedi.api.classes import Name
 from typing import Sequence

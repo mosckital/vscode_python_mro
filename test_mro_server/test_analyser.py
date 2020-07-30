@@ -1,6 +1,6 @@
 import pytest
-import os.path as path
 import pathlib
+from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
 
