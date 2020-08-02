@@ -11,6 +11,7 @@ ROOT_URI = path.join(TEST_ROOT, '..')
 TEST_FILE_ROOT = path.join(ROOT_URI, 'tests', 'examples')
 DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
 DIAMOND_SCRIPT = jedi.Script(path=DIAMOND_FILE_PATH)
+# Conforming to Jedi standard: line starting with 1 and char starting with 0
 DIAMOND_CLASS_NAME_LOCATIONS = [(9, 6,), (24, 6,), (36, 6,), (48, 6,),]
 DIAMOND_CLASS_NAMES : Sequence[Name] = [
 	DIAMOND_SCRIPT.infer(*loc)[0] for loc in DIAMOND_CLASS_NAME_LOCATIONS
@@ -36,7 +37,8 @@ class TestMROCalculator:
 	@pytest.mark.parametrize(
 		('file_path', 'line', 'char', 'expected'),
 		[
-			(DIAMOND_FILE_PATH, l, c, (n, l, c + 1))
+			# changing line starting with 1 (Jedi) to with 0 (LSP)
+			(DIAMOND_FILE_PATH, l - 1, c, (n, c + 1))
 			for (l, c), n in zip(DIAMOND_CLASS_NAME_LOCATIONS, ['A', 'B', 'C', 'D'])
 		]
 	)
@@ -46,4 +48,4 @@ class TestMROCalculator:
 		"""Unit test for get_name_at_pos()."""
 		with open(file_path) as f:
 			lines = f.readlines()
-			assert MROCalculator.get_name_at_pos([""] + lines, line, char) == expected
+			assert MROCalculator.get_name_at_pos(lines[line], char) == expected
