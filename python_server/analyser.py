@@ -1,5 +1,7 @@
+import ast
+from attr.validators import instance_of
 import jedi
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Sequence, Tuple, Optional
 from jedi.api.classes import Name
 
 
@@ -25,6 +27,9 @@ class MROAnalyser:
         # cache the jedi Names of the found code lens which will be updated
         # every time the script is updated
         self.lens_names: Dict[str, Sequence[Name]] = {}
+        # TODO: to refactor/improve from O(n^2) to O(n)
+        # TODO: try to remove Jedi and only rely on ast
+        self.class_defs: Dict[str, Sequence[ast.ClassDef]] = {}
 
     def replace_script_content(self, script_uri: str, content: str) -> None:
         """
@@ -109,6 +114,11 @@ class MROAnalyser:
             n for n in script.get_names()
             if self._is_original_class(n, script_context)
         ]
+        parsed_mod = ast.parse(content)
+        self.class_defs[script_uri] = [
+            child for child in parsed_mod.body
+            if isinstance(child, ast.ClassDef)
+        ]
 
     @staticmethod
     def _is_original_class(class_name: Name, script_context: Name) -> bool:
@@ -123,8 +133,10 @@ class MROAnalyser:
             `True` if the class is an originally defined class or `False`
             otherwise
         """
-        return class_name.type == 'class' and class_name.full_name.startswith(
-            script_context.full_name)
+        if script_context.full_name:
+            return class_name.type == 'class' and class_name.full_name.startswith(
+                script_context.full_name)
+        return False
 
     def update_fetch_code_lens(self, script_uri: str) -> Sequence[Dict]:
         """
@@ -138,12 +150,15 @@ class MROAnalyser:
         """
         self.update_code_lens_names_if_needed(script_uri)
         return [
-            self.get_code_lens_from_name(n)
+            self.get_code_lens_from_name(
+                n,
+                self.get_class_def_from_name(script_uri, n),
+            )
             for n in self.lens_names[script_uri]
         ]
 
     def update_fetch_hover(self, script_uri: str,
-                           position: Tuple[int, int]) -> Dict:
+                           position: Tuple[int, int]) -> Optional[Dict]:
         """
         To update and fetch the hover information for a given position of a
         given script.
@@ -166,11 +181,20 @@ class MROAnalyser:
                     lens_name,
             ):
                 return {
-                    'contents': self.get_code_lens_from_name(lens_name)['data']
+                    'contents': self.get_code_lens_from_name(
+                        lens_name,
+                        self.get_class_def_from_name(script_uri, lens_name),
+                    )['data']
                 }
+    
+    def get_class_def_from_name(self, script_uri: str, name: Name) -> Optional[ast.ClassDef]:
+        for cd in self.class_defs[script_uri]:
+            if cd.name == name.name:
+                return cd
+        return None
 
     @staticmethod
-    def get_code_lens_from_name(name: Name) -> Dict:
+    def get_code_lens_from_name(name: Name, cls_def: Optional[ast.ClassDef]) -> Dict:
         """
         To get the MRO code lens from the given jedi Name.
 
@@ -193,7 +217,8 @@ class MROAnalyser:
                     'character': def_end[1],
                 }
             },
-            'data': MROAnalyser._DUMMY_MRO_INFO,
+            # 'data': MROAnalyser._DUMMY_MRO_INFO,
+            'data': MROAnalyser.fetch_base_parents_from_class_def(cls_def) if cls_def else 'Unable to analyse',
         }
 
     # TODO: to replace this with actual MRO list calculation implementation
@@ -219,6 +244,9 @@ class MROAnalyser:
             the declaration range in format ((start_line, start_char),
             (end_line, end_char)), where start is inclusive but end is exclusive
         """
+        if not name.line or not name.column:
+            raise ValueError('Cannot fetch line or column from Jedi Name')
+        line, col = name.line, name.column
         # line number is changed from 1-based to 0-based
         def_start = (name.line - 1, name.column)
         def_lines = name.name.split()
@@ -247,3 +275,16 @@ class MROAnalyser:
         """
         def_start, def_end = MROAnalyser.get_declaration_range_from_name(name)
         return def_start <= position < def_end
+    
+    @staticmethod
+    def fetch_base_parents_from_class_def(cls_def: ast.ClassDef) -> Sequence[str]:
+        return [
+            b.id if isinstance(b, ast.Name) else (
+                b.value.id if isinstance(
+                    b, ast.Subscript
+                ) and isinstance(
+                    b.value, ast.Name
+                ) else 'Unknown'
+            )
+            for b in cls_def.bases
+        ]

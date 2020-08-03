@@ -3,6 +3,7 @@ import os
 import socketserver
 import threading
 from functools import partial
+from typing import Callable, Optional
 from python_server.mro_lang_server import MROLanguageServer
 
 
@@ -13,6 +14,9 @@ class _StreamHandlerWrapper(socketserver.StreamRequestHandler, object):
     """A wrapper class that is used to construct a custom handler class."""
 
     delegate = None
+
+    DELEGATE_CLASS : Optional[Callable] = None
+    SHUTDOWN_CALL : Optional[Callable] = None
 
     def setup(self):
         super(_StreamHandlerWrapper, self).setup()
