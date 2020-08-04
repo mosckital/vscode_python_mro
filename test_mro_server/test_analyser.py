@@ -1,3 +1,4 @@
+from typing import Sequence
 import pytest
 import pathlib
 from os import path
@@ -10,7 +11,7 @@ ROOT_URI = path.join(TEST_ROOT, '..')
 TEST_FILE_ROOT = path.join(ROOT_URI, 'tests', 'examples')
 DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
 DIAMOND_FILE_TEST_CASES = [
-    # (line number, character number, expected result)
+    # (line number, character number, expected success flag)
     # line and character are 0-based, according to Language Server Protocol
     # all class names should be detected
     (8, 6, True,), (23, 6, True,), (35, 6, True,), (47, 6, True,),
@@ -22,6 +23,17 @@ DIAMOND_FILE_TEST_CASES = [
     (2, 6, False,), (5, 0, False,), (25, 10, False,), (53, 18, False,),
 ]
 DIAMOND_FILE_NUM_EXPECTED_CODE_LENS = 4
+DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS = [
+    # (line number, character number)
+    # line and character are 0-based, according to Language Server Protocol
+    (8, 6,),
+    (23, 6,),
+    (35, 6,),
+    (47, 6,),
+]
+DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
+    ['Generic'], ['A'], ['A'], ['B', 'C'],
+]
 
 
 class TestMROAnalyser:
@@ -42,7 +54,46 @@ class TestMROAnalyser:
             analyser.replace_script_content(script_uri, script.read())
             assert (analyser.update_fetch_hover(script_uri, (line, char))
                     is not None) == expected
+    
+    @pytest.mark.parametrize(
+        ('script_path',),
+        [(DIAMOND_FILE_PATH,)]
+    )
+    @pytest.mark.parametrize(
+        ('line', 'char', 'expected',),
+        [
+            (l, c, r) for (l, c), r in zip(
+                DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS,
+                DIAMOND_FILE_SUCCESS_RESULT_CONTENTS
+            )
+        ]
+    )
+    def test_successful_update_fetch_hover(
+            self, script_path: str, line: int, char: int, expected: Sequence[str]
+        ):
+        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
+        script_uri = pathlib.Path(script_path).as_uri()
+        with open(script_path) as script:
+            analyser.replace_script_content(script_uri, script.read())
+            hover = analyser.update_fetch_hover(script_uri, (line, char))
+            assert hover is not None
+            assert hover['contents'] == expected
 
+    @pytest.mark.parametrize(
+        ('script_path', 'expected_count'),
+        [(DIAMOND_FILE_PATH, DIAMOND_FILE_NUM_EXPECTED_CODE_LENS)],
+    )
+    def test_update_fetch_code_lens(
+            self, script_path: str, expected_count: int, expected: Sequence[str]):
+        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
+        script_uri = pathlib.Path(script_path).as_uri()
+        with open(script_path) as script:
+            analyser.replace_script_content(script_uri, script.read())
+            lenses = analyser.update_fetch_code_lens(script_uri)
+            assert len(lenses) == expected_count
+            for lens in lenses:
+                assert lens['data'] in expected
+    
     @pytest.mark.parametrize(
         ('script_path', 'expected_count'),
         [(DIAMOND_FILE_PATH, DIAMOND_FILE_NUM_EXPECTED_CODE_LENS)],
