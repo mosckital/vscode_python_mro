@@ -135,10 +135,10 @@ class TestMROAnalyser:
         script_uri = pathlib.Path(script_path).as_uri()
         with open(script_path) as script:
             analyser.update_code_lens_names_if_needed(script_uri)
-            assert script_uri not in analyser.lens_names
-            analyser.lens_names[script_uri] = []
+            assert script_uri not in analyser.code_lenses
+            analyser.code_lenses[script_uri] = []
             analyser.update_code_lens_names_if_needed(script_uri)
-            assert analyser.lens_names[script_uri] == []
+            assert analyser.code_lenses[script_uri] == []
             analyser.replace_script_content(script_uri, script.read())
             assert len(
                 analyser.update_fetch_code_lens(script_uri)
