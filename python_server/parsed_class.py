@@ -15,6 +15,7 @@ class ParsedClass:
 
     def __init__(self, jedi_name: Name, jedi_script: Script) -> None:
         self.jedi_name = jedi_name
+        self.full_name = self.jedi_name.full_name if self.jedi_name.full_name else ''
         self.jedi_script = jedi_script
         self.lines = self._get_code_lines()
         self.class_def = self._get_class_def_ast_from_lines()

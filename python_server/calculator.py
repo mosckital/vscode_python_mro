@@ -23,12 +23,14 @@ class MROCalculator:
         # content cache will be maintained by MROAnalyser, not in this class
         self.content_cache = content_cache
         # script uri -> Jedi script
-        self.jedi_scripts : Dict[str, Script] = {}
+        self.jedi_scripts_by_uri : Dict[str, Script] = {}
         # script uri -> ParsedClass list of the script
-        self.parsed_names : Dict[str, Sequence[ParsedClass]] = {}
+        self.parsed_names_by_uri : Dict[str, Sequence[ParsedClass]] = {}
+        # class full name -> ParsedClass
+        self.parsed_name_by_ful_name : Dict[str, ParsedClass] = {}
         # set of the outdated scripts' uri
         self.outdated_scripts : Set[str] = set()
-    
+
     def _update_script(self, script_uri: str):
         """
         To update the Jedi script and the ParsedClass list based on the given
@@ -37,18 +39,22 @@ class MROCalculator:
         Args:
             script_uri: the uri of the target script
         """
+        if script_uri not in self.content_cache:
+            return
         script = jedi.Script(
             code='\n'.join(self.content_cache[script_uri]),
             project=self.project,
         )
         context = script.get_context()
-        self.jedi_scripts[script_uri] = script
-        self.parsed_names[script_uri] = [
+        self.jedi_scripts_by_uri[script_uri] = script
+        self.parsed_names_by_uri[script_uri] = [
             ParsedClass(class_name, script)
             for class_name in script.get_names()
             # only the class defined in the script will be considered
             if self._is_original_class(class_name, context)
         ]
+        for parsed in self.parsed_names_by_uri[script_uri]:
+            self.parsed_name_by_ful_name[parsed.full_name] = parsed
     
     def mark_script_outdated(self, outdated_uri: str):
         """
@@ -59,8 +65,17 @@ class MROCalculator:
         Args:
             outdated_uri: the uri of the outdated script
         """
+        if outdated_uri in self.outdated_scripts:
+            return
         self.outdated_scripts.add(outdated_uri)
-    
+        if outdated_uri in self.parsed_names_by_uri:
+            for parsed in self.parsed_names_by_uri[outdated_uri]:
+                self.parsed_name_by_ful_name.pop(
+                    parsed.full_name, None
+                )
+        self.jedi_scripts_by_uri.pop(outdated_uri, None)
+        self.parsed_names_by_uri.pop(outdated_uri, None)
+
     def update_all(self):
         """
         Update all the outdated scripts.
@@ -90,10 +105,10 @@ class MROCalculator:
         Returns:
             the list of code lens in the script
         """
-        if script_uri not in self.parsed_names:
+        if script_uri not in self.parsed_names_by_uri:
             return []
         return [
-            parsed.code_lens for parsed in self.parsed_names[script_uri]
+            parsed.code_lens for parsed in self.parsed_names_by_uri[script_uri]
         ]
     
     def get_code_lens_and_range(self, script_uri: str):
@@ -107,7 +122,7 @@ class MROCalculator:
         Returns:
             the list of the code lens and range
         """
-        if script_uri not in self.parsed_names:
+        if script_uri not in self.parsed_names_by_uri:
             return []
         return [
             (
@@ -118,7 +133,7 @@ class MROCalculator:
                     (parsed.end_pos[0] - 1, parsed.end_pos[1],),
                 )
             )
-            for parsed in self.parsed_names[script_uri]
+            for parsed in self.parsed_names_by_uri[script_uri]
         ]
     
     @staticmethod
