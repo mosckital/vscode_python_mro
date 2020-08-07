@@ -14,21 +14,21 @@ class MROAnalyser:
     immediately minused by one to change from 1-based (Jedi standard or
     AST standard) to 0-based (LSP standard).
     """
-    def __init__(self, root_uri: str) -> None:
+    def __init__(self, root_dir: str) -> None:
         # the root path of the Python project directory
-        self.root_dir = root_uri
+        self.root_dir = root_dir
         # cache the actual codes as lines
         # this cache is very useful as there will be unsaved changes
         self.content_cache: Dict[str, Sequence[str]] = {}
         # the MRO calculator responsible for all MRO relevant calculations
         self.calculator = MROCalculator(self.root_dir, self.content_cache)
 
-    def replace_script_content(self, script_uri: str, content: str) -> None:
+    def replace_script_content(self, script_path: str, content: str) -> None:
         """
         To replace the cached content of a script by the new content.
 
         Args:
-            script_uri: the URI of the target script
+            script_path: the path of the target script
             content: the new content
         """
         lines = content.splitlines()
@@ -37,20 +37,20 @@ class MROAnalyser:
         if not content or content[-1] == '\n':
             lines.append('')
         # update the content cache
-        self.content_cache[script_uri] = lines
+        self.content_cache[script_path] = lines
         # to mark the outdated script in calculator
         # this may lead to better performance in case of sequence of small
         # incremental changes
-        self.calculator.mark_script_outdated(script_uri)
+        self.calculator.mark_script_outdated(script_path)
 
-    def update_script_content(self, script_uri: str, start_pos: Tuple[int,
+    def update_script_content(self, script_path: str, start_pos: Tuple[int,
                                                                       int],
                               end_pos: Tuple[int, int], change: str) -> None:
         """
         To update the cached content of a script by an incremental change.
 
         Args:
-            script_uri: the URI of the target script
+            script_path: the path of the target script
             start_pos: the start position (inclusive) of the changes, in format
                 of (line, character)
             end_pos: the end position (exclusive) of the changes, in format of
@@ -58,7 +58,7 @@ class MROAnalyser:
             change: the text of the incremental changes
         """
         # fetch the lines of the old content
-        lines = self.content_cache[script_uri]
+        lines = self.content_cache[script_path]
         # decompose the start and end positions
         start_line, start_char = start_pos
         end_line, end_char = end_pos
@@ -77,31 +77,31 @@ class MROAnalyser:
         new_lines[-1] += lines[end_line][end_char:]
         new_lines.extend(lines[end_line + 1:])
         # update the content cache
-        self.content_cache[script_uri] = new_lines
+        self.content_cache[script_path] = new_lines
         # to mark the outdated script in calculator
-        self.calculator.mark_script_outdated(script_uri)
+        self.calculator.mark_script_outdated(script_path)
 
-    def update_fetch_code_lens(self, script_uri: str) -> Sequence[Dict]:
+    def update_fetch_code_lens(self, script_path: str) -> Sequence[Dict]:
         """
         To update and fetch all MRO code lenses in the target script.
 
         Args:
-            script_uri: the URI of the target script
+            script_path: the path of the target script
         
         Returns:
             the list of the found MRO code lenses
         """
-        self.calculator.update_one(script_uri)
-        return self.calculator.get_code_lens(script_uri)
+        self.calculator.update_one(script_path)
+        return self.calculator.get_code_lens(script_path)
 
-    def update_fetch_hover(self, script_uri: str,
+    def update_fetch_hover(self, script_path: str,
                            position: Tuple[int, int]) -> Optional[Dict]:
         """
         To update and fetch the hover information for a given position of a
         given script.
 
         Args:
-            script_uri: the URI of the target script
+            script_path: the path of the target script
             position: the position of the cursor to request hover information,
                 in format (line, character)
         
@@ -109,9 +109,9 @@ class MROAnalyser:
             the hover information conforming to the Language Server Protocol
             Hover Request
         """
-        self.calculator.update_one(script_uri)
+        self.calculator.update_one(script_path)
         for lens, (start_pos, end_pos) in \
-            self.calculator.get_code_lens_and_range(script_uri):
+            self.calculator.get_code_lens_and_range(script_path):
             if start_pos <= position < end_pos:
                 return {
                     'contents': lens['data'],

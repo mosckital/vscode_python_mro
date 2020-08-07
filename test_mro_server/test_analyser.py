@@ -1,14 +1,13 @@
 from typing import Sequence
 import pytest
-import pathlib
 from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
 
 
 TEST_ROOT = f'{path.abspath(path.dirname(__file__))}'
-ROOT_URI = path.join(TEST_ROOT, '..')
-TEST_FILE_ROOT = path.join(ROOT_URI, 'tests', 'examples')
+ROOT_DIR = path.abspath(path.join(TEST_ROOT, '..'))
+TEST_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'examples')
 DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
 DIAMOND_FILE_TEST_CASES = [
     # (line number, character number, expected success flag)
@@ -48,11 +47,10 @@ class TestMROAnalyser:
     )
     def test_update_fetch_hover(self, script_path: str, line: int, char: int,
                              expected: bool):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
-            assert (analyser.update_fetch_hover(script_uri, (line, char))
+            analyser.replace_script_content(script_path, script.read())
+            assert (analyser.update_fetch_hover(script_path, (line, char))
                     is not None) == expected
     
     @pytest.mark.parametrize(
@@ -71,11 +69,10 @@ class TestMROAnalyser:
     def test_successful_update_fetch_hover(
             self, script_path: str, line: int, char: int, expected: Sequence[str]
         ):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
-            hover = analyser.update_fetch_hover(script_uri, (line, char))
+            analyser.replace_script_content(script_path, script.read())
+            hover = analyser.update_fetch_hover(script_path, (line, char))
             assert hover is not None
             assert hover['contents'] == expected
 
@@ -85,11 +82,10 @@ class TestMROAnalyser:
     )
     def test_update_fetch_code_lens(
             self, script_path: str, expected_count: int, expected: Sequence[str]):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
-            lenses = analyser.update_fetch_code_lens(script_uri)
+            analyser.replace_script_content(script_path, script.read())
+            lenses = analyser.update_fetch_code_lens(script_path)
             assert len(lenses) == expected_count
             for lens in lenses:
                 assert lens['data'] in expected
@@ -100,12 +96,11 @@ class TestMROAnalyser:
     )
     def test_update_fetch_code_lens(self, script_path: str,
                                     expected_count: int):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
+            analyser.replace_script_content(script_path, script.read())
             assert len(
-                analyser.update_fetch_code_lens(script_uri)
+                analyser.update_fetch_code_lens(script_path)
             ) == expected_count
 
     @staticmethod
@@ -182,12 +177,11 @@ class TestMROAnalyser:
     )
     def test_update_code_lens_names_if_needed(self, script_path: str,
                                               expected_count: int):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.calculator.update_one(script_uri)
-            assert script_uri not in analyser.calculator.get_code_lens(script_uri)
-            analyser.replace_script_content(script_uri, script.read())
+            analyser.calculator.update_one(script_path)
+            assert script_path not in analyser.calculator.get_code_lens(script_path)
+            analyser.replace_script_content(script_path, script.read())
             assert len(
-                analyser.update_fetch_code_lens(script_uri)
+                analyser.update_fetch_code_lens(script_path)
             ) == expected_count

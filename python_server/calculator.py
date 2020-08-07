@@ -15,114 +15,117 @@ class MROCalculator:
 
     def __init__(
             self,
-            root_uri: str,
+            root_dir: str,
             content_cache: Dict[str, Sequence[str]]
         ) -> None:
-        self.root_uri = root_uri
-        self.project = jedi.Project(path=root_uri)
+        self.root_dir = root_dir
+        self.project = jedi.Project(path=root_dir)
         # content cache will be maintained by MROAnalyser, not in this class
         self.content_cache = content_cache
-        # script uri -> Jedi script
-        self.jedi_scripts_by_uri : Dict[str, Script] = {}
-        # script uri -> ParsedClass list of the script
-        self.parsed_names_by_uri : Dict[str, Sequence[ParsedClass]] = {}
+        # script path -> Jedi script
+        self.jedi_scripts_by_path : Dict[str, Script] = {}
+        # script path -> ParsedClass list of the script
+        self.parsed_names_by_path : Dict[str, Sequence[ParsedClass]] = {}
         # class full name -> ParsedClass
         self.parsed_name_by_ful_name : Dict[str, ParsedClass] = {}
-        # set of the outdated scripts' uri
+        # set of the outdated scripts' path
         self.outdated_scripts : Set[str] = set()
 
-    def _update_script(self, script_uri: str):
+    def _update_script(self, script_path: str):
         """
         To update the Jedi script and the ParsedClass list based on the given
-        script uri and its cached content.
+        script path and its cached content.
 
         Args:
-            script_uri: the uri of the target script
+            script_path: the path of the target script
         """
-        if script_uri not in self.content_cache:
+        if script_path not in self.content_cache:
             return
         script = jedi.Script(
-            code='\n'.join(self.content_cache[script_uri]),
-            project=self.project,
+            code='\n'.join(self.content_cache[script_path]),
+            path=script_path,
+            # project=self.project,
         )
         context = script.get_context()
-        self.jedi_scripts_by_uri[script_uri] = script
-        self.parsed_names_by_uri[script_uri] = [
-            ParsedClass(class_name, script)
+        # assert False, f"{script_path}"
+        self.jedi_scripts_by_path[script_path] = script
+        self.parsed_names_by_path[script_path] = [
+            # ParsedClass.parse(class_name, script)
+            ParsedClass.parse_by_jedi_name(class_name, self.jedi_scripts_by_path)
             for class_name in script.get_names()
             # only the class defined in the script will be considered
             if self._is_original_class(class_name, context)
         ]
-        for parsed in self.parsed_names_by_uri[script_uri]:
+        for parsed in self.parsed_names_by_path[script_path]:
             self.parsed_name_by_ful_name[parsed.full_name] = parsed
     
-    def mark_script_outdated(self, outdated_uri: str):
+    def mark_script_outdated(self, outdated_path: str):
         """
         Mark one script as outdated, so all relevant cached intermediate results
         are no longer valid and need to be recalculated when it's requested next
         time.
 
         Args:
-            outdated_uri: the uri of the outdated script
+            outdated_path: the path of the outdated script
         """
-        if outdated_uri in self.outdated_scripts:
+        if outdated_path in self.outdated_scripts:
             return
-        self.outdated_scripts.add(outdated_uri)
-        if outdated_uri in self.parsed_names_by_uri:
-            for parsed in self.parsed_names_by_uri[outdated_uri]:
+        self.outdated_scripts.add(outdated_path)
+        if outdated_path in self.parsed_names_by_path:
+            for parsed in self.parsed_names_by_path[outdated_path]:
                 self.parsed_name_by_ful_name.pop(
                     parsed.full_name, None
                 )
-        self.jedi_scripts_by_uri.pop(outdated_uri, None)
-        self.parsed_names_by_uri.pop(outdated_uri, None)
+        self.jedi_scripts_by_path.pop(outdated_path, None)
+        self.parsed_names_by_path.pop(outdated_path, None)
 
     def update_all(self):
         """
         Update all the outdated scripts.
         """
-        for outdated_uri in self.outdated_scripts:
-            self._update_script(outdated_uri)
+        for outdated_path in self.outdated_scripts:
+            self._update_script(outdated_path)
         self.outdated_scripts.clear()
     
-    def update_one(self, script_uri: str):
+    def update_one(self, script_path: str):
         """
-        Update the one specific outdated script, given its uri.
+        Update the one specific outdated script, given its path.
 
         Args:
-            script_uri: the uri of the target outdated script
+            script_path: the path of the target outdated script
         """
-        if script_uri in self.outdated_scripts:
-            self._update_script(script_uri)
-            self.outdated_scripts.remove(script_uri)
+        if script_path in self.outdated_scripts:
+            self._update_script(script_path)
+            self.outdated_scripts.remove(script_path)
     
-    def get_code_lens(self, script_uri: str) -> Sequence[Dict]:
+    def get_code_lens(self, script_path: str) -> Sequence[Dict]:
         """
         Get the code lens list of the given script.
 
         Args:
-            script_uri: the uri of the target script
+            script_path: the path of the target script
         
         Returns:
             the list of code lens in the script
         """
-        if script_uri not in self.parsed_names_by_uri:
+        if script_path not in self.parsed_names_by_path:
             return []
         return [
-            parsed.code_lens for parsed in self.parsed_names_by_uri[script_uri]
+            parsed.code_lens for parsed in self.parsed_names_by_path[script_path]
         ]
     
-    def get_code_lens_and_range(self, script_uri: str):
+    def get_code_lens_and_range(self, script_path: str):
         """
         Get the list of the code lens and the range of the associate parsed
         class for the given target script.
 
         Args:
-            script_uri: the uri of the given script
+            script_path: the path of the given script
         
         Returns:
             the list of the code lens and range
         """
-        if script_uri not in self.parsed_names_by_uri:
+        if script_path not in self.parsed_names_by_path:
             return []
         return [
             (
@@ -133,7 +136,7 @@ class MROCalculator:
                     (parsed.end_pos[0] - 1, parsed.end_pos[1],),
                 )
             )
-            for parsed in self.parsed_names_by_uri[script_uri]
+            for parsed in self.parsed_names_by_path[script_path]
         ]
     
     @staticmethod
@@ -153,3 +156,17 @@ class MROCalculator:
             return class_name.type == 'class'
         return class_name.type == 'class' and class_name.full_name.startswith(
             script_context.full_name)
+
+    # @classmethod
+    # def c3_mro(cls, parsed_class: ParsedClass) -> Sequence[ParsedClass]:
+    #     if not parsed_class:
+    #         return []
+    #     if parsed_class == ParsedClass.OBJECT_CLASS:
+    #         return [parsed_class]
+    #     # recursively construct the C3 MRO list
+    #     merge_list = [cls.c3_mro()]
+
+    # @classmethod
+    # def merge(cls, in_lists: Sequence[ParsedClass]):
+    #     object
+    #     pass
