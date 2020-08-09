@@ -1,5 +1,6 @@
 from __future__ import annotations
 import ast
+from time import sleep
 import jedi
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -19,12 +20,17 @@ class ParsedClass(ABC):
 
     OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
 
-    def __init__(self) -> None:
-        self.full_name : str = ''
+    def __init__(self, jedi_name: Name) -> None:
+        self.jedi_name = jedi_name
+        self.full_name = self.jedi_name.full_name if self.jedi_name.full_name else ''
         self.start_pos : Tuple[int, int] = (0, 0)
         self.end_pos : Tuple[int, int] = (0, 0)
-        self.mro_list : Sequence[str] = []
+        self.mro_name_list : Sequence[Name] = []
         self.code_lens : Dict = {}
+    
+    @property
+    def mro_list(self) -> Sequence[str]:
+        return [name.name for name in self.mro_name_list]
     
     def get_code_lens(self):
         """Get the Code Lens associated with this parsed class."""

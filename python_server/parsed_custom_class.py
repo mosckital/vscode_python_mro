@@ -18,12 +18,11 @@ class ParsedCustomClass(ParsedClass):
     OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
 
     def __init__(self, jedi_name: Name, jedi_script: Script) -> None:
-        self.jedi_name = jedi_name
-        self.full_name = self.jedi_name.full_name if self.jedi_name.full_name else ''
-        self.jedi_script = jedi_script
-        self.lines = self._get_code_lines()
-        self.class_def = self._get_class_def_ast_from_lines()
-        if not self.jedi_name.line or not self.jedi_name.column:
+        super().__init__(jedi_name)
+        self._jedi_script = jedi_script
+        self._lines = self._get_code_lines()
+        self._class_def = self._get_class_def_ast_from_lines()
+        if self.jedi_name.line is None or self.jedi_name.column is None:
             raise ValueError(f'Parsed class {self.jedi_name.full_name} has no line or column information.')
         # positions with line starting with 1 (Jedi and AST standard)
         self.start_pos : Tuple[int, int] = (
@@ -32,26 +31,16 @@ class ParsedCustomClass(ParsedClass):
         )
         self.end_pos : Tuple[int, int] = (
             self.jedi_name.line,
-            self.jedi_name.column + len(self.class_def.name)
+            self.jedi_name.column + len(self._class_def.name)
         )
-        # self.base_parent_info : Sequence[Tuple[Tuple[int, int], Name]] = [
-        #     (
-        #         (b.lineno + self.jedi_name.line - 1, b.col_offset),
-        #         self.jedi_script.infer(
-        #             b.lineno + self.jedi_name.line - 1,
-        #             b.col_offset
-        #         )[0]
-        #     )
-        #     for b in self.class_def.bases
-        # ]
-        self.base_parent_names : Sequence[Name] = [
-            self.jedi_script.infer(
+        self._base_parent_names : Sequence[Name] = [
+            self._jedi_script.infer(
                 b.lineno + self.jedi_name.line - 1,
                 b.col_offset
             )[0]
-            for b in self.class_def.bases
+            for b in self._class_def.bases
         ]
-        self.mro_list = self._get_mro_list()
+        self.mro_name_list = self._get_mro_name_list()
         self.code_lens = self.get_code_lens()
 
     def _get_code_lines(self):
@@ -71,13 +60,11 @@ class ParsedCustomClass(ParsedClass):
     
     def _get_class_def_ast_from_lines(self):
         """Get the correspondent ast.ClassDef instance."""
-        codes = '\n'.join(self.lines)
+        codes = '\n'.join(self._lines)
         mod = ast.parse(codes)
         # there will be one and only one class definition
         return [n for n in mod.body if isinstance(n, ast.ClassDef)][0]
     
-    def _get_mro_list(self) -> Sequence[str]:
-        """Calculate the MRO list."""
-        return [
-            n.name for n in self.base_parent_names
-        ]
+    def _get_mro_name_list(self) -> Sequence[Name]:
+        """Calculate the MRO list in Jedi Name."""
+        return self._base_parent_names
