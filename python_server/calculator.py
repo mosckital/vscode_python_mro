@@ -27,7 +27,7 @@ class MROCalculator:
         # script path -> ParsedClass list of the script
         self.parsed_names_by_path : Dict[str, Sequence[ParsedClass]] = {}
         # class full name -> ParsedClass
-        self.parsed_name_by_ful_name : Dict[str, ParsedClass] = {}
+        self.parsed_name_by_full_name : Dict[str, ParsedClass] = {}
         # set of the outdated scripts' path
         self.outdated_scripts : Set[str] = set()
 
@@ -44,20 +44,20 @@ class MROCalculator:
         script = jedi.Script(
             code='\n'.join(self.content_cache[script_path]),
             path=script_path,
-            # project=self.project,
+            project=self.project,
         )
         context = script.get_context()
-        # assert False, f"{script_path}"
         self.jedi_scripts_by_path[script_path] = script
         self.parsed_names_by_path[script_path] = [
             # ParsedClass.parse(class_name, script)
-            ParsedClass.parse_by_jedi_name(class_name, self.jedi_scripts_by_path)
+            self.parse_class_by_jedi_name(class_name)
+            # ParsedClass.parse_by_jedi_name(class_name, self.jedi_scripts_by_path)
             for class_name in script.get_names()
             # only the class defined in the script will be considered
             if self._is_original_class(class_name, context)
         ]
         for parsed in self.parsed_names_by_path[script_path]:
-            self.parsed_name_by_ful_name[parsed.full_name] = parsed
+            self.parsed_name_by_full_name[parsed.full_name] = parsed
     
     def mark_script_outdated(self, outdated_path: str):
         """
@@ -73,7 +73,7 @@ class MROCalculator:
         self.outdated_scripts.add(outdated_path)
         if outdated_path in self.parsed_names_by_path:
             for parsed in self.parsed_names_by_path[outdated_path]:
-                self.parsed_name_by_ful_name.pop(
+                self.parsed_name_by_full_name.pop(
                     parsed.full_name, None
                 )
         self.jedi_scripts_by_path.pop(outdated_path, None)
@@ -156,6 +156,21 @@ class MROCalculator:
             return class_name.type == 'class'
         return class_name.type == 'class' and class_name.full_name.startswith(
             script_context.full_name)
+    
+    def parse_class_by_jedi_name(
+        self, jedi_name: Name
+    ) -> ParsedClass:
+        if jedi_name.full_name == 'builtins.object':
+            return PARSED_OBJECT_CLASS
+        if not jedi_name.module_path:
+            # TODO: to correct
+            return ParsedPackageClass(jedi_name)
+        script_path = jedi_name.module_path
+        if script_path in self.jedi_scripts_by_path:
+            return ParsedCustomClass(jedi_name, self)
+        else:
+            # TODO: may need to update the content cache
+            return ParsedPackageClass(jedi_name)
 
     # @classmethod
     # def c3_mro(cls, parsed_class: ParsedClass) -> Sequence[ParsedClass]:
@@ -170,3 +185,7 @@ class MROCalculator:
     # def merge(cls, in_lists: Sequence[ParsedClass]):
     #     object
     #     pass
+
+
+from python_server.parsed_package_class import ParsedPackageClass, PARSED_OBJECT_CLASS
+from python_server.parsed_custom_class import ParsedCustomClass

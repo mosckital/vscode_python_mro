@@ -31,7 +31,10 @@ DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS = [
     (47, 6,),
 ]
 DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
-    ['Generic'], ['A'], ['A'], ['B', 'C'],
+    ['A', 'Generic', 'object'],
+    ['B', 'A', 'Generic', 'object'],
+    ['C', 'A', 'Generic', 'object'],
+    ['D', 'B', 'C', 'Generic', 'object'],
 ]
 
 

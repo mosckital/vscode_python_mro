@@ -1,8 +1,12 @@
 import ast
+
+from jedi.settings import fast_parser
+from python_server.parsed_package_class import ParsedPackageClass
 import jedi
-from typing import Tuple, Sequence
+from typing import Any, Dict, Tuple, Sequence
 from jedi.api import Script
 from jedi.api.classes import Name
+from python_server.calculator import MROCalculator
 from python_server.parsed_class import ParsedClass
 
 
@@ -17,9 +21,12 @@ class ParsedCustomClass(ParsedClass):
 
     OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
 
-    def __init__(self, jedi_name: Name, jedi_script: Script) -> None:
+    def __init__(self, jedi_name: Name, calculator: MROCalculator) -> None:
         super().__init__(jedi_name)
-        self._jedi_script = jedi_script
+        self._calculator = calculator
+        if (not jedi_name.module_path) or (jedi_name.module_path not in calculator.jedi_scripts_by_path):
+            raise ValueError("Jedi Name's module name is not available or not registered.")
+        self._jedi_script = calculator.jedi_scripts_by_path[jedi_name.module_path]
         self._lines = self._get_code_lines()
         self._class_def = self._get_class_def_ast_from_lines()
         if self.jedi_name.line is None or self.jedi_name.column is None:
@@ -40,8 +47,27 @@ class ParsedCustomClass(ParsedClass):
             )[0]
             for b in self._class_def.bases
         ]
-        self.mro_name_list = self._get_mro_name_list()
-        self.code_lens = self.get_code_lens()
+        self._mro_name_list = None
+        self._mro_parsed_list = None
+        self._code_lens = None
+    
+    @property
+    def mro_name_list(self) -> Sequence[Name]:
+        if not self._mro_name_list:
+            self._mro_name_list = self._get_mro_name_list()
+        return self._mro_name_list
+    
+    @property
+    def mro_parsed_list(self) -> Sequence[ParsedClass]:
+        if not self._mro_parsed_list:
+            self._mro_parsed_list = self._get_mro_parsed_list()
+        return self._mro_parsed_list
+    
+    @property
+    def code_lens(self):
+        if not self._code_lens:
+            self._code_lens = self.get_code_lens()
+        return self._code_lens
 
     def _get_code_lines(self):
         """Get the code block of the class definition, separated by lines."""
@@ -66,5 +92,63 @@ class ParsedCustomClass(ParsedClass):
         return [n for n in mod.body if isinstance(n, ast.ClassDef)][0]
     
     def _get_mro_name_list(self) -> Sequence[Name]:
-        """Calculate the MRO list in Jedi Name."""
+        """Calculate the MRO list in Jedi Name via the C3 Linearisation
+        algorithm."""
         return self._base_parent_names
+
+    def _merge_mro_name_lists(self, sublists):
+        """The merge step in the C3 Linearisation algorithm to merge the MRO
+        sublists (elements in Jedi Names) to one result MRO list (elements in
+        Jedi Names).
+        """
+        pass
+    
+    def _get_base_parent_parsed(self):
+        return [
+            self._calculator.parsed_name_by_full_name.get(
+                base_name.full_name, ParsedPackageClass(base_name)
+            ) if base_name.full_name else ParsedPackageClass(base_name)
+            for base_name in self._base_parent_names
+        ]
+
+    def _get_mro_parsed_list(self) -> Sequence[ParsedClass]:
+        """Calculate the MRO list in ParsedClass via the C3 Linearisation
+        algorithm."""
+        base_parent_parsed = self._get_base_parent_parsed()
+        merge_list = [base_parsed.mro_parsed_list for base_parsed in base_parent_parsed]
+        merge_list.append(base_parent_parsed)
+        mro_parsed_list = [self] + self._merge_mro_parsed_lists(merge_list)
+        # assert False, f'{self.full_name} / {self.jedi_name} / {mro_parsed_list}'
+        # assert False, f'{[parsed.full_name for parsed in mro_parsed_list]}'
+        return mro_parsed_list
+    
+    @classmethod
+    def _merge_mro_parsed_lists(cls, sublists):
+        """The merge step in the C3 Linearisation algorithm to merge the MRO
+        sublists (elements in ParsedClass) to one result MRO list (elements in
+        ParsedClass).
+        """
+        if not sublists:
+            return []
+        for i, mro_list in enumerate(sublists):
+            head = mro_list[0]
+            good_head = True
+            #TODO: to improve by follow wikipedia idea
+            for cmp_list in sublists:
+                for parsed in cmp_list[1:]:
+                    if head.full_name == parsed.full_name:
+                        good_head = False
+                        break
+                if not good_head:
+                    break
+            if good_head:
+                next_list = []
+                for merge_item in sublists:
+                    new_list = [
+                        item for item in merge_item
+                        if item.full_name != head.full_name
+                    ]
+                    if new_list:
+                        next_list.append(new_list)
+                return [head] + cls._merge_mro_parsed_lists(next_list)
+        return []
