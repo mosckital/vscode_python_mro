@@ -8,7 +8,7 @@ class ParsedPackageClass(ParsedClass):
         super().__init__(jedi_name)
         self._mro_name_list = [self.jedi_name]
         self._mro_parsed_list = [self]
-        if self.jedi_name != self.OBJECT_CLASS:
+        if self.jedi_name.full_name != self.OBJECT_CLASS.full_name:
             self._mro_name_list.append(self.OBJECT_CLASS)
             self._mro_parsed_list.append(PARSED_OBJECT_CLASS)
         self._code_lens = {}

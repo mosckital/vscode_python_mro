@@ -1,5 +1,5 @@
-from typing import Sequence
 import pytest
+from typing import Sequence
 from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
@@ -34,8 +34,15 @@ DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
     ['A', 'Generic', 'object'],
     ['B', 'A', 'Generic', 'object'],
     ['C', 'A', 'Generic', 'object'],
-    ['D', 'B', 'C', 'Generic', 'object'],
+    ['D', 'B', 'C', 'A', 'Generic', 'object'],
 ]
+NEW_TEST_CONTENT = """
+
+class Test:
+    pass
+
+"""
+NEW_RESULT_CONTENT = ['Test', 'object']
 
 
 class TestMROAnalyser:
@@ -80,18 +87,47 @@ class TestMROAnalyser:
             assert hover['contents'] == expected
 
     @pytest.mark.parametrize(
-        ('script_path', 'expected_count'),
-        [(DIAMOND_FILE_PATH, DIAMOND_FILE_NUM_EXPECTED_CODE_LENS)],
+        (
+            'script_path', 'expected_count', 'expected',
+            'new_test_content', 'new_expected_result'
+        ),
+        [(
+            DIAMOND_FILE_PATH,
+            DIAMOND_FILE_NUM_EXPECTED_CODE_LENS,
+            DIAMOND_FILE_SUCCESS_RESULT_CONTENTS,
+            NEW_TEST_CONTENT,
+            NEW_RESULT_CONTENT,
+        )],
     )
-    def test_update_fetch_code_lens(
-            self, script_path: str, expected_count: int, expected: Sequence[str]):
+    def test_successful_update_fetch_code_lens(
+            self, script_path: str, expected_count: int,
+            expected: Sequence[Sequence[str]],
+            new_test_content: str, new_expected_result: Sequence[str]
+        ):
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
+            # test code lens result with the original file content
             analyser.replace_script_content(script_path, script.read())
             lenses = analyser.update_fetch_code_lens(script_path)
             assert len(lenses) == expected_count
             for lens in lenses:
                 assert lens['data'] in expected
+            # add new test content into the file
+            lines = analyser.content_cache[script_path]
+            n_last_line = len(lines) - 1
+            n_last_char = len(lines[-1])
+            analyser.update_script_content(
+                script_path,
+                (n_last_line, n_last_char),
+                (n_last_line, n_last_char),
+                new_test_content
+            )
+            # test code lens result with the new test content
+            lenses = analyser.update_fetch_code_lens(script_path)
+            assert len(lenses) == expected_count + 1
+            for lens in lenses:
+                if lens['data'] not in expected:
+                    assert lens['data'] == new_expected_result
     
     @pytest.mark.parametrize(
         ('script_path', 'expected_count'),

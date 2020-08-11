@@ -46,7 +46,7 @@ class ParsedCustomClass(ParsedClass):
                 b.col_offset
             )[0]
             for b in self._class_def.bases
-        ]
+        ] if self._class_def.bases else [self.OBJECT_CLASS]
         self._mro_name_list = None
         self._mro_parsed_list = None
         self._code_lens = None
@@ -130,7 +130,7 @@ class ParsedCustomClass(ParsedClass):
         """
         if not sublists:
             return []
-        for i, mro_list in enumerate(sublists):
+        for mro_list in sublists:
             head = mro_list[0]
             good_head = True
             #TODO: to improve by follow wikipedia idea

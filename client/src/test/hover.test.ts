@@ -8,10 +8,10 @@ suite('Should show Hover', () => {
 	test('All class names should show hover', async () => {
 		// activate the extension and open the document
 		await activate(docUri);
-		await testHover(docUri, new vscode.Position(8, 6), true, ['Generic']);
-		await testHover(docUri, new vscode.Position(23, 6), true, ['A']);
-		await testHover(docUri, new vscode.Position(35, 6), true, ['A']);
-		await testHover(docUri, new vscode.Position(47, 6), true, ['B', 'C']);
+		await testHover(docUri, new vscode.Position(8, 6), true, ['A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(23, 6), true, ['B', 'A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(35, 6), true, ['C', 'A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(47, 6), true, ['D', 'B', 'C', 'A', 'Generic', 'object']);
 	});
 
 	test('Keyword class should not show hover', async () => {
