@@ -47,16 +47,9 @@ class ParsedCustomClass(ParsedClass):
             )[0]
             for b in self._class_def.bases
         ] if self._class_def.bases else [self.OBJECT_CLASS]
-        self._mro_name_list = None
         self._mro_parsed_list = None
         self._code_lens = None
-    
-    @property
-    def mro_name_list(self) -> Sequence[Name]:
-        if not self._mro_name_list:
-            self._mro_name_list = self._get_mro_name_list()
-        return self._mro_name_list
-    
+
     @property
     def mro_parsed_list(self) -> Sequence[ParsedClass]:
         if not self._mro_parsed_list:
@@ -90,19 +83,7 @@ class ParsedCustomClass(ParsedClass):
         mod = ast.parse(codes)
         # there will be one and only one class definition
         return [n for n in mod.body if isinstance(n, ast.ClassDef)][0]
-    
-    def _get_mro_name_list(self) -> Sequence[Name]:
-        """Calculate the MRO list in Jedi Name via the C3 Linearisation
-        algorithm."""
-        return self._base_parent_names
 
-    def _merge_mro_name_lists(self, sublists):
-        """The merge step in the C3 Linearisation algorithm to merge the MRO
-        sublists (elements in Jedi Names) to one result MRO list (elements in
-        Jedi Names).
-        """
-        pass
-    
     def _get_base_parent_parsed(self):
         return [
             self._calculator.parsed_name_by_full_name.get(
@@ -118,8 +99,6 @@ class ParsedCustomClass(ParsedClass):
         merge_list = [base_parsed.mro_parsed_list for base_parsed in base_parent_parsed]
         merge_list.append(base_parent_parsed)
         mro_parsed_list = [self] + self._merge_mro_parsed_lists(merge_list)
-        # assert False, f'{self.full_name} / {self.jedi_name} / {mro_parsed_list}'
-        # assert False, f'{[parsed.full_name for parsed in mro_parsed_list]}'
         return mro_parsed_list
     
     @classmethod
@@ -130,13 +109,12 @@ class ParsedCustomClass(ParsedClass):
         """
         if not sublists:
             return []
-        for mro_list in sublists:
+        for i, mro_list in enumerate(sublists):
             head = mro_list[0]
             good_head = True
-            #TODO: to improve by follow wikipedia idea
-            for cmp_list in sublists:
+            for cmp_list in sublists[i + 1:]:
                 for parsed in cmp_list[1:]:
-                    if head.full_name == parsed.full_name:
+                    if head == parsed:
                         good_head = False
                         break
                 if not good_head:
@@ -146,7 +124,7 @@ class ParsedCustomClass(ParsedClass):
                 for merge_item in sublists:
                     new_list = [
                         item for item in merge_item
-                        if item.full_name != head.full_name
+                        if item != head
                     ]
                     if new_list:
                         next_list.append(new_list)
