@@ -1,10 +1,6 @@
 import ast
-
-from jedi.settings import fast_parser
 from python_server.parsed_package_class import ParsedPackageClass
-import jedi
-from typing import Any, Dict, Tuple, Sequence
-from jedi.api import Script
+from typing import Tuple, Sequence
 from jedi.api.classes import Name
 from python_server.calculator import MROCalculator
 from python_server.parsed_class import ParsedClass
@@ -18,8 +14,6 @@ class ParsedCustomClass(ParsedClass):
     All the necessary calculation to get the MRO list will be done during the
     initialisation of the instance.
     """
-
-    OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
 
     def __init__(self, jedi_name: Name, calculator: MROCalculator) -> None:
         super().__init__(jedi_name)
@@ -85,6 +79,7 @@ class ParsedCustomClass(ParsedClass):
         return [n for n in mod.body if isinstance(n, ast.ClassDef)][0]
 
     def _get_base_parent_parsed(self):
+        """Get the list of base parent classes in ParseClass format."""
         return [
             self._calculator.parsed_name_by_full_name.get(
                 base_name.full_name, ParsedPackageClass(base_name)
@@ -93,8 +88,13 @@ class ParsedCustomClass(ParsedClass):
         ]
 
     def _get_mro_parsed_list(self) -> Sequence[ParsedClass]:
-        """Calculate the MRO list in ParsedClass via the C3 Linearisation
-        algorithm."""
+        """
+        Calculate the MRO list in ParsedClass via the C3 Linearisation
+        algorithm.
+
+        Details of the algorithm can be found in the `C3 Linearisation`
+        Wikipedia page.
+        """
         base_parent_parsed = self._get_base_parent_parsed()
         merge_list = [base_parsed.mro_parsed_list for base_parsed in base_parent_parsed]
         merge_list.append(base_parent_parsed)
@@ -109,9 +109,11 @@ class ParsedCustomClass(ParsedClass):
         """
         if not sublists:
             return []
+        # iterate over all possible next parent class (the head)
         for i, mro_list in enumerate(sublists):
             head = mro_list[0]
             good_head = True
+            # check the head candidate is not in any other list tail
             for cmp_list in sublists[i + 1:]:
                 for parsed in cmp_list[1:]:
                     if head == parsed:
@@ -119,6 +121,7 @@ class ParsedCustomClass(ParsedClass):
                         break
                 if not good_head:
                     break
+            # construct the remaining list to merge if the head is valid
             if good_head:
                 next_list = []
                 for merge_item in sublists:

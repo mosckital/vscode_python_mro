@@ -1,5 +1,4 @@
 import logging
-import re
 from os.path import abspath
 from urllib.parse import unquote, urlparse
 from pyls_jsonrpc.dispatchers import MethodDispatcher
@@ -40,6 +39,7 @@ class MROLanguageServer(MethodDispatcher):
         self._jsonrpc_stream_reader.listen(self._endpoint.consume)
 
     def m_initialize(self, rootUri=None, rootPath=None, **kwargs):
+        """Initialise the language server and reply the capabilities."""
         root_dir = self.uri_to_abs_path(rootUri) if rootUri else rootPath
         self._analyser = MROAnalyser(root_dir=root_dir)
         log.info("Initialising custom Python MRO language server.")
@@ -119,4 +119,13 @@ class MROLanguageServer(MethodDispatcher):
 
     @staticmethod
     def uri_to_abs_path(uri: str) -> str:
+        """
+        Convert an URI to a file path.
+
+        Args:
+            uri: the URI to convert
+        
+        Returns:
+            The file path of the URI
+        """
         return abspath(unquote(urlparse(uri).path))

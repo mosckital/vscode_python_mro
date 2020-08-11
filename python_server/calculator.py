@@ -72,10 +72,12 @@ class MROCalculator:
             return
         self.outdated_scripts.add(outdated_path)
         if outdated_path in self.parsed_names_by_path:
+            # delete all cached parsed classes
             for parsed in self.parsed_names_by_path[outdated_path]:
                 self.parsed_name_by_full_name.pop(
                     parsed.full_name, None
                 )
+        # delete cached Jedi scripts and parsed classes entries
         self.jedi_scripts_by_path.pop(outdated_path, None)
         self.parsed_names_by_path.pop(outdated_path, None)
 
@@ -160,31 +162,24 @@ class MROCalculator:
     def parse_class_by_jedi_name(
         self, jedi_name: Name
     ) -> ParsedClass:
+        """
+        To parse a class definition by its Jedi Name.
+
+        Args:
+            jedi_name: the Jedi Name of the target class to parse
+        
+        Returns:
+            The parsed class in ParsedClass
+        """
         if jedi_name.full_name == 'builtins.object':
             return PARSED_OBJECT_CLASS
         if not jedi_name.module_path:
-            # TODO: to correct
             return ParsedPackageClass(jedi_name)
         script_path = jedi_name.module_path
         if script_path in self.jedi_scripts_by_path:
             return ParsedCustomClass(jedi_name, self)
         else:
-            # TODO: may need to update the content cache
             return ParsedPackageClass(jedi_name)
-
-    # @classmethod
-    # def c3_mro(cls, parsed_class: ParsedClass) -> Sequence[ParsedClass]:
-    #     if not parsed_class:
-    #         return []
-    #     if parsed_class == ParsedClass.OBJECT_CLASS:
-    #         return [parsed_class]
-    #     # recursively construct the C3 MRO list
-    #     merge_list = [cls.c3_mro()]
-
-    # @classmethod
-    # def merge(cls, in_lists: Sequence[ParsedClass]):
-    #     object
-    #     pass
 
 
 from python_server.parsed_package_class import ParsedPackageClass, PARSED_OBJECT_CLASS

@@ -1,12 +1,7 @@
 from __future__ import annotations
-import ast
-from time import sleep
-from attr.validators import instance_of
 import jedi
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Tuple, Sequence, Dict
-from jedi.api import Script
 from jedi.api.classes import Name
 
 
@@ -20,6 +15,7 @@ class ParsedClass(ABC):
     """
 
     OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
+    """A Jedi Name to represent the `object` class."""
 
     def __init__(self, jedi_name: Name) -> None:
         self.jedi_name = jedi_name
@@ -30,16 +26,18 @@ class ParsedClass(ABC):
     @property
     @abstractmethod
     def mro_parsed_list(self) -> Sequence[ParsedClass]:
+        """The MRO list in ParsedClass of the target class."""
         pass
 
     @property
     @abstractmethod
     def code_lens(self) -> Dict:
+        """The code lens correspondent to this parsed class."""
         pass
 
     @property
     def mro_list(self) -> Sequence[str]:
-        # return [name.name for name in self.mro_name_list]
+        """The MRO list of the class."""
         return [parsed.jedi_name.name for parsed in self.mro_parsed_list]
     
     def get_code_lens(self):

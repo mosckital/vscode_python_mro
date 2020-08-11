@@ -46,6 +46,7 @@ NEW_RESULT_CONTENT = ['Test', 'object']
 
 
 class TestMROAnalyser:
+    """Test suite for the MROAnalyser"""
 
     @pytest.mark.parametrize(
         ('script_path',),
@@ -57,6 +58,7 @@ class TestMROAnalyser:
     )
     def test_update_fetch_hover(self, script_path: str, line: int, char: int,
                              expected: bool):
+        """Test case for updating then fetching hover responses."""
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
@@ -79,6 +81,7 @@ class TestMROAnalyser:
     def test_successful_update_fetch_hover(
             self, script_path: str, line: int, char: int, expected: Sequence[str]
         ):
+        """Test case for updating, fetching and checking hover responses."""
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
@@ -104,6 +107,7 @@ class TestMROAnalyser:
             expected: Sequence[Sequence[str]],
             new_test_content: str, new_expected_result: Sequence[str]
         ):
+        """Test case for updating, fetching and checking code lens responses."""
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
             # test code lens result with the original file content
@@ -135,6 +139,7 @@ class TestMROAnalyser:
     )
     def test_update_fetch_code_lens(self, script_path: str,
                                     expected_count: int):
+        """Test case for updating then fetching code lens responses."""
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
@@ -144,6 +149,15 @@ class TestMROAnalyser:
 
     @staticmethod
     def gen_random_line(max_len: int) -> str:
+        """
+        Generate some random lines.
+        
+        Args:
+            max_len: the max number of lines
+        
+        Returns:
+            the generated lines
+        """
         return ''.join(
             chr(randint(97, 120)) for _ in range(randint(0, max_len))
         )
@@ -154,6 +168,7 @@ class TestMROAnalyser:
     )
     def test_replace_script_content(self, n_times: int, max_lines: int,
                                     max_line_len: int):
+        """Test case for the replace_script_content() method."""
         for _ in range(n_times):
             content = '\n'.join(
                 TestMROAnalyser.gen_random_line(max_line_len)
@@ -170,6 +185,7 @@ class TestMROAnalyser:
     )
     def test_update_script_content(self, n_times: int, max_lines: int,
                                     max_line_len: int):
+        """Test case for the update_script_content() method."""
         for _ in range(n_times):
             # init analyser
             analyser = MROAnalyser('')
@@ -216,6 +232,7 @@ class TestMROAnalyser:
     )
     def test_update_code_lens_names_if_needed(self, script_path: str,
                                               expected_count: int):
+        """Test if code lens can be correctely updated when needed."""
         analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
             analyser.calculator.update_one(script_path)
