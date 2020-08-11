@@ -1,16 +1,16 @@
 import pytest
-import os.path as path
-import pathlib
+from typing import Sequence
+from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
 
 
 TEST_ROOT = f'{path.abspath(path.dirname(__file__))}'
-ROOT_URI = path.join(TEST_ROOT, '..')
-TEST_FILE_ROOT = path.join(ROOT_URI, 'tests', 'examples')
+ROOT_DIR = path.abspath(path.join(TEST_ROOT, '..'))
+TEST_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'examples')
 DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
 DIAMOND_FILE_TEST_CASES = [
-    # (line number, character number, expected result)
+    # (line number, character number, expected success flag)
     # line and character are 0-based, according to Language Server Protocol
     # all class names should be detected
     (8, 6, True,), (23, 6, True,), (35, 6, True,), (47, 6, True,),
@@ -22,9 +22,31 @@ DIAMOND_FILE_TEST_CASES = [
     (2, 6, False,), (5, 0, False,), (25, 10, False,), (53, 18, False,),
 ]
 DIAMOND_FILE_NUM_EXPECTED_CODE_LENS = 4
+DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS = [
+    # (line number, character number)
+    # line and character are 0-based, according to Language Server Protocol
+    (8, 6,),
+    (23, 6,),
+    (35, 6,),
+    (47, 6,),
+]
+DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
+    ['A', 'Generic', 'object'],
+    ['B', 'A', 'Generic', 'object'],
+    ['C', 'A', 'Generic', 'object'],
+    ['D', 'B', 'C', 'A', 'Generic', 'object'],
+]
+NEW_TEST_CONTENT = """
+
+class Test:
+    pass
+
+"""
+NEW_RESULT_CONTENT = ['Test', 'object']
 
 
 class TestMROAnalyser:
+    """Test suite for the MROAnalyser"""
 
     @pytest.mark.parametrize(
         ('script_path',),
@@ -36,29 +58,106 @@ class TestMROAnalyser:
     )
     def test_update_fetch_hover(self, script_path: str, line: int, char: int,
                              expected: bool):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        """Test case for updating then fetching hover responses."""
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
-            assert (analyser.update_fetch_hover(script_uri, (line, char))
+            analyser.replace_script_content(script_path, script.read())
+            assert (analyser.update_fetch_hover(script_path, (line, char))
                     is not None) == expected
+    
+    @pytest.mark.parametrize(
+        ('script_path',),
+        [(DIAMOND_FILE_PATH,)]
+    )
+    @pytest.mark.parametrize(
+        ('line', 'char', 'expected',),
+        [
+            (l, c, r) for (l, c), r in zip(
+                DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS,
+                DIAMOND_FILE_SUCCESS_RESULT_CONTENTS
+            )
+        ]
+    )
+    def test_successful_update_fetch_hover(
+            self, script_path: str, line: int, char: int, expected: Sequence[str]
+        ):
+        """Test case for updating, fetching and checking hover responses."""
+        analyser = MROAnalyser(TEST_FILE_ROOT)
+        with open(script_path) as script:
+            analyser.replace_script_content(script_path, script.read())
+            hover = analyser.update_fetch_hover(script_path, (line, char))
+            assert hover is not None
+            assert hover['contents'] == expected
 
+    @pytest.mark.parametrize(
+        (
+            'script_path', 'expected_count', 'expected',
+            'new_test_content', 'new_expected_result'
+        ),
+        [(
+            DIAMOND_FILE_PATH,
+            DIAMOND_FILE_NUM_EXPECTED_CODE_LENS,
+            DIAMOND_FILE_SUCCESS_RESULT_CONTENTS,
+            NEW_TEST_CONTENT,
+            NEW_RESULT_CONTENT,
+        )],
+    )
+    def test_successful_update_fetch_code_lens(
+            self, script_path: str, expected_count: int,
+            expected: Sequence[Sequence[str]],
+            new_test_content: str, new_expected_result: Sequence[str]
+        ):
+        """Test case for updating, fetching and checking code lens responses."""
+        analyser = MROAnalyser(TEST_FILE_ROOT)
+        with open(script_path) as script:
+            # test code lens result with the original file content
+            analyser.replace_script_content(script_path, script.read())
+            lenses = analyser.update_fetch_code_lens(script_path)
+            assert len(lenses) == expected_count
+            for lens in lenses:
+                assert lens['data'] in expected
+            # add new test content into the file
+            lines = analyser.content_cache[script_path]
+            n_last_line = len(lines) - 1
+            n_last_char = len(lines[-1])
+            analyser.update_script_content(
+                script_path,
+                (n_last_line, n_last_char),
+                (n_last_line, n_last_char),
+                new_test_content
+            )
+            # test code lens result with the new test content
+            lenses = analyser.update_fetch_code_lens(script_path)
+            assert len(lenses) == expected_count + 1
+            for lens in lenses:
+                if lens['data'] not in expected:
+                    assert lens['data'] == new_expected_result
+    
     @pytest.mark.parametrize(
         ('script_path', 'expected_count'),
         [(DIAMOND_FILE_PATH, DIAMOND_FILE_NUM_EXPECTED_CODE_LENS)],
     )
     def test_update_fetch_code_lens(self, script_path: str,
                                     expected_count: int):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        """Test case for updating then fetching code lens responses."""
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.replace_script_content(script_uri, script.read())
+            analyser.replace_script_content(script_path, script.read())
             assert len(
-                analyser.update_fetch_code_lens(script_uri)
+                analyser.update_fetch_code_lens(script_path)
             ) == expected_count
 
     @staticmethod
     def gen_random_line(max_len: int) -> str:
+        """
+        Generate some random lines.
+        
+        Args:
+            max_len: the max number of lines
+        
+        Returns:
+            the generated lines
+        """
         return ''.join(
             chr(randint(97, 120)) for _ in range(randint(0, max_len))
         )
@@ -69,6 +168,7 @@ class TestMROAnalyser:
     )
     def test_replace_script_content(self, n_times: int, max_lines: int,
                                     max_line_len: int):
+        """Test case for the replace_script_content() method."""
         for _ in range(n_times):
             content = '\n'.join(
                 TestMROAnalyser.gen_random_line(max_line_len)
@@ -85,6 +185,7 @@ class TestMROAnalyser:
     )
     def test_update_script_content(self, n_times: int, max_lines: int,
                                     max_line_len: int):
+        """Test case for the update_script_content() method."""
         for _ in range(n_times):
             # init analyser
             analyser = MROAnalyser('')
@@ -131,15 +232,12 @@ class TestMROAnalyser:
     )
     def test_update_code_lens_names_if_needed(self, script_path: str,
                                               expected_count: int):
-        analyser = MROAnalyser(pathlib.Path(TEST_FILE_ROOT).as_uri())
-        script_uri = pathlib.Path(script_path).as_uri()
+        """Test if code lens can be correctely updated when needed."""
+        analyser = MROAnalyser(TEST_FILE_ROOT)
         with open(script_path) as script:
-            analyser.update_code_lens_names_if_needed(script_uri)
-            assert script_uri not in analyser.lens_names
-            analyser.lens_names[script_uri] = []
-            analyser.update_code_lens_names_if_needed(script_uri)
-            assert analyser.lens_names[script_uri] == []
-            analyser.replace_script_content(script_uri, script.read())
+            analyser.calculator.update_one(script_path)
+            assert script_path not in analyser.calculator.get_code_lens(script_path)
+            analyser.replace_script_content(script_path, script.read())
             assert len(
-                analyser.update_fetch_code_lens(script_uri)
+                analyser.update_fetch_code_lens(script_path)
             ) == expected_count

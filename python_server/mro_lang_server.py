@@ -1,5 +1,6 @@
 import logging
-import re
+from os.path import abspath
+from urllib.parse import unquote, urlparse
 from pyls_jsonrpc.dispatchers import MethodDispatcher
 from pyls_jsonrpc.endpoint import Endpoint
 from pyls_jsonrpc.streams import JsonRpcStreamReader, JsonRpcStreamWriter
@@ -38,8 +39,9 @@ class MROLanguageServer(MethodDispatcher):
         self._jsonrpc_stream_reader.listen(self._endpoint.consume)
 
     def m_initialize(self, rootUri=None, rootPath=None, **kwargs):
-        self._root_dir = rootUri if rootUri else rootPath
-        self._analyser = MROAnalyser(root_uri=self._root_dir)
+        """Initialise the language server and reply the capabilities."""
+        root_dir = self.uri_to_abs_path(rootUri) if rootUri else rootPath
+        self._analyser = MROAnalyser(root_dir=root_dir)
         log.info("Initialising custom Python MRO language server.")
         return {"capabilities": {
          "textDocumentSync": {
@@ -54,8 +56,10 @@ class MROLanguageServer(MethodDispatcher):
 
     def m_text_document__did_open(self, textDocument=None):
         """Split the lines of the newly opened document and store them."""
-        self._analyser.replace_script_content(textDocument['uri'],
-                                              textDocument['text'])
+        self._analyser.replace_script_content(
+            self.uri_to_abs_path(textDocument['uri']),
+            textDocument['text']
+        )
 
     def m_text_document__did_change(self,
                                     textDocument=None,
@@ -64,12 +68,14 @@ class MROLanguageServer(MethodDispatcher):
         if not contentChanges:
             return
         if self._sync_kind == self.SYNC_FULL:
-            self._analyser.replace_script_content(textDocument['uri'],
-                                                  contentChanges[0]['text'])
+            self._analyser.replace_script_content(
+                self.uri_to_abs_path(textDocument['uri']),
+                contentChanges[0]['text']
+            )
         elif self._sync_kind == self.SYNC_INCREMENTAL:
             for change in contentChanges:
                 self._analyser.update_script_content(
-                    textDocument['uri'],
+                    self.uri_to_abs_path(textDocument['uri']),
                     (change['range']['start']['line'],
                      change['range']['start']['character']),
                     (change['range']['end']['line'],
@@ -81,11 +87,15 @@ class MROLanguageServer(MethodDispatcher):
                                **_kwargs):
         """Calculate and return the hover result."""
         return self._analyser.update_fetch_hover(
-            textDocument['uri'], (position['line'], position['character']))
+            self.uri_to_abs_path(textDocument['uri']),
+            (position['line'], position['character'])
+        )
 
     def m_text_document__code_lens(self, textDocument=None, **_kwargs):
         """Calculate and return the code lens list."""
-        return self._analyser.update_fetch_code_lens(textDocument['uri'])
+        return self._analyser.update_fetch_code_lens(
+            self.uri_to_abs_path(textDocument['uri'])
+        )
 
     def m_code_lens__resolve(self, **codeLens):
         """Fill up the details of a code lens."""
@@ -106,3 +116,16 @@ class MROLanguageServer(MethodDispatcher):
 
     def m_exit(self):
         log.info('Exiting...')
+
+    @staticmethod
+    def uri_to_abs_path(uri: str) -> str:
+        """
+        Convert an URI to a file path.
+
+        Args:
+            uri: the URI to convert
+        
+        Returns:
+            The file path of the URI
+        """
+        return abspath(unquote(urlparse(uri).path))

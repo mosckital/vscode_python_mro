@@ -69,25 +69,6 @@ export async function setTestContent(content: string): Promise<boolean> {
 	return editor.edit(eb => eb.replace(all, content));
 }
 
-/**
- * Check if the given contents are dummy MRO content.
- * @param contents the contents to check
- */
-export const checkDummyMROContent = (contents: vscode.MarkedString[]) => {
-	let firstLine = contents[0];
-	let firstLineContent: string;
-	if (typeof firstLine === 'string') {
-		firstLineContent = firstLine;
-	} else {
-		firstLineContent = firstLine.value;
-	}
-	if (firstLineContent === 'Target class name') {
-		return true;
-	} else {
-		return false;
-	}
-};
-
 // dummy content to populate into test docs for testing
 let dummyNewContent = `
 

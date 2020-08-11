@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { getDocUri, activate, checkDummyMROContent } from './helper';
+import { getDocUri, activate } from './helper';
 
 suite('Should show Hover', () => {
 	const docUri = getDocUri('diamond.py');
@@ -8,10 +8,10 @@ suite('Should show Hover', () => {
 	test('All class names should show hover', async () => {
 		// activate the extension and open the document
 		await activate(docUri);
-		await testHover(docUri, new vscode.Position(8, 6), true);
-		await testHover(docUri, new vscode.Position(23, 6), true);
-		await testHover(docUri, new vscode.Position(35, 6), true);
-		await testHover(docUri, new vscode.Position(47, 6), true);
+		await testHover(docUri, new vscode.Position(8, 6), true, ['A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(23, 6), true, ['B', 'A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(35, 6), true, ['C', 'A', 'Generic', 'object']);
+		await testHover(docUri, new vscode.Position(47, 6), true, ['D', 'B', 'C', 'A', 'Generic', 'object']);
 	});
 
 	test('Keyword class should not show hover', async () => {
@@ -45,7 +45,8 @@ suite('Should show Hover', () => {
 async function testHover(
 	docUri: vscode.Uri,
 	hoverPosition: vscode.Position,
-	should_hover: boolean
+	should_hover: boolean,
+	hover_contents: string[] = undefined,
 ) {
 	// check if the number of returned hover results is correct
 	const actualHoverResults = (await vscode.commands.executeCommand(
@@ -60,11 +61,22 @@ async function testHover(
 	}
 	let foundMRO = false;
 	actualHoverResults.forEach(hover => {
-		if (hover.contents.length > 0) {
-			foundMRO = checkDummyMROContent(hover.contents);
+		if (hover.contents.length === hover_contents.length) {
+			// to check if the content values are correct
+			// TODO: update the check from only base parents to MRO list once implemented
+			foundMRO = true;
+			for (var i = 0; i < hover_contents.length && foundMRO; i++) {
+				var content = hover.contents[i];
+				if (typeof content === 'string') {
+					content = content;
+				} else {
+					content = content.value;
+				}
+				if (content !== hover_contents[i]) {
+					foundMRO = false;
+				}
+			}
 		}
 	});
 	assert.ok(foundMRO);
-	// TODO: to add the check for the contents once the functionality has been
-	// fully implemented
 }
