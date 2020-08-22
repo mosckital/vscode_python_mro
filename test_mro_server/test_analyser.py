@@ -1,4 +1,5 @@
 import pytest
+import yaml
 from typing import Sequence
 from os import path
 from random import randint
@@ -9,33 +10,24 @@ TEST_ROOT = f'{path.abspath(path.dirname(__file__))}'
 ROOT_DIR = path.abspath(path.join(TEST_ROOT, '..'))
 TEST_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'examples')
 DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
-DIAMOND_FILE_TEST_CASES = [
-    # (line number, character number, expected success flag)
-    # line and character are 0-based, according to Language Server Protocol
-    # all class names should be detected
-    (8, 6, True,), (23, 6, True,), (35, 6, True,), (47, 6, True,),
-    # keyword 'class' should not be detected
-    (8, 3, False,), (23, 0, False,), (35, 5, False,), (47, 4, False,),
-    # base class list should not be detected
-    (8, 10, False,), (23, 8, False,), (35, 7, False,), (47, 10, False,),
-    # function or other stuff should not be detected
-    (2, 6, False,), (5, 0, False,), (25, 10, False,), (53, 18, False,),
-]
-DIAMOND_FILE_NUM_EXPECTED_CODE_LENS = 4
+STATS_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'example_stats')
+DIAMOND_STATS_PATH = path.join(STATS_FILE_ROOT, 'diamond_stats.yml')
+with open(DIAMOND_STATS_PATH, 'r') as stats_file:
+    diamond_stats = yaml.load(stats_file, yaml.Loader)
+
+DIAMOND_FILE_NUM_EXPECTED_CODE_LENS = len(diamond_stats['code_lenses'])
 DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS = [
-    # (line number, character number)
-    # line and character are 0-based, according to Language Server Protocol
-    (8, 6,),
-    (23, 6,),
-    (35, 6,),
-    (47, 6,),
+    lens['location'] for lens in diamond_stats['code_lenses']
 ]
 DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
-    ['A', 'Generic', 'object'],
-    ['B', 'A', 'Generic', 'object'],
-    ['C', 'A', 'Generic', 'object'],
-    ['D', 'B', 'C', 'A', 'Generic', 'object'],
+    lens['mro'] for lens in diamond_stats['code_lenses']
 ]
+DIAMOND_FILE_TEST_CASES = [
+    lens['location'] + (True,) for lens in diamond_stats['code_lenses']
+] + [
+    case['location'] + (False,) for case in diamond_stats['negative_cases']
+]
+
 NEW_TEST_CONTENT = """
 
 class Test:

@@ -1,0 +1,29 @@
+# code lenses found in the diamond.py file
+# the line and character of the locations are 0-based according to the Language
+# Server Protocol
+code_lenses:
+  - location: !!python/tuple [8, 6]
+    mro: ['A', 'Generic', 'object']
+  - location: !!python/tuple [23, 6]
+    mro: ['B', 'A', 'Generic', 'object']
+  - location: !!python/tuple [35, 6]
+    mro: ['C', 'A', 'Generic', 'object']
+  - location: !!python/tuple [47, 6]
+    mro: ['D', 'B', 'C', 'A', 'Generic', 'object']
+# the negative examples where no code lens should be parsed
+negative_cases:
+  # keyword 'class' should not be detected
+  - location: !!python/tuple [8, 3]
+  - location: !!python/tuple [23, 0]
+  - location: !!python/tuple [35, 5]
+  - location: !!python/tuple [47, 4]
+  # base class list should not be detected
+  - location: !!python/tuple [8, 10]
+  - location: !!python/tuple [23, 8]
+  - location: !!python/tuple [35, 7]
+  - location: !!python/tuple [47, 10]
+  # function or other stuff should not be detected
+  - location: !!python/tuple [2, 6]
+  - location: !!python/tuple [5, 0]
+  - location: !!python/tuple [25, 10]
+  - location: !!python/tuple [53, 18]
