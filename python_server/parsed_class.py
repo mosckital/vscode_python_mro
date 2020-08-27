@@ -52,7 +52,7 @@ class ParsedClass(ABC):
                 'end': {
                     # changing to line starting with 0 (LSP standard)
                     'line': self.end_pos[0] - 1,
-                    'character': self.end_pos[1],
+                    'character': self.end_pos[1] - 1,
                 }
             },
             'data': self.mro_list,

@@ -5,6 +5,8 @@
 
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
+import { readFileSync } from 'fs';
 
 export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
@@ -54,11 +56,23 @@ export async function sleep(ms: number) {
 	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+export async function waitFor(condition: () => boolean, timeout: number = 5000) {
+	let interval = 100;
+	while (!condition() && timeout > 0) {
+		await sleep(interval);
+		timeout -= interval;
+	}
+	return condition();
+}
+
 export const getDocPath = (p: string) => {
 	return path.resolve(__dirname, '../../../tests/examples', p);
 };
 export const getDocUri = (p: string) => {
 	return vscode.Uri.file(getDocPath(p));
+};
+export const getYamlPath = (p: string) => {
+	return path.resolve(__dirname, '../../../tests/example_stats', p);
 };
 
 export async function setTestContent(content: string): Promise<boolean> {
@@ -93,4 +107,8 @@ export async function addContent(docUri: vscode.Uri) {
 	} catch (e) {
 		console.error(e);
 	}
+}
+
+export function readYamlFile(yamlFileName: string) {
+	return yaml.safeLoad(readFileSync(getYamlPath(yamlFileName), 'utf8'));
 }
