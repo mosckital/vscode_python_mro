@@ -91,6 +91,11 @@ class Test:
 	pass
 `;
 
+export let dummyNewCodeLens = {
+	location: [57, 6],
+	mro: ['Test', 'object']
+};
+
 /**
  * Add dummy content to a doc for testing purpose.
  * @param docUri the uri of the doc to add dummy content
