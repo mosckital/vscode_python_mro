@@ -9,5 +9,5 @@
 	},
 	// settings for Plant UML
 	"plantuml.diagramsRoot": "umls",
-    "plantuml.exportOutDir": "umls/pics"
+	"plantuml.exportOutDir": "umls/pics"
 }

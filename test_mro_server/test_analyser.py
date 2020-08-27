@@ -23,9 +23,9 @@ DIAMOND_FILE_SUCCESS_RESULT_CONTENTS = [
     lens['mro'] for lens in diamond_stats['code_lenses']
 ]
 DIAMOND_FILE_TEST_CASES = [
-    lens['location'] + (True,) for lens in diamond_stats['code_lenses']
+    lens['location'] + [True,] for lens in diamond_stats['code_lenses']
 ] + [
-    case['location'] + (False,) for case in diamond_stats['negative_cases']
+    case['location'] + [False,] for case in diamond_stats['negative_cases']
 ]
 
 NEW_TEST_CONTENT = """
