@@ -23,6 +23,15 @@ suite('Should show Hover', () => {
 	});
 });
 
+/**
+ * Test if the correctness of the hover feature against a specific document and
+ * a list of expected results.
+ * The expected results are expressed as code lenses because the hovers use the
+ * same information as the code lenses.
+ * A code lens with no `mro` field means expecting a negative answer.
+ * @param docUri the uri of the target document to test
+ * @param expectedCodeLenses the list of expected code lenses (used by hover)
+ */
 async function testHovers(
 	docUri: vscode.Uri,
 	expectedCodeLenses: { location: number[], mro?: string[] }[],

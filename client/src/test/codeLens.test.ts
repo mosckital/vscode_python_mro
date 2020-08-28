@@ -26,6 +26,7 @@ suite('Should show CodeLens', () => {
 	});
 
 	test('Check correctness after adding content', async () => {
+		// we should wait until the tests on the original content have finished
 		await waitFor(() => (finishedCodeLenses && finishedNegativeCases), 3000);
 		let newContent = testFileData.dummy_content.join('\n');
 		await addContent(docUri, newContent);
@@ -35,6 +36,11 @@ suite('Should show CodeLens', () => {
 	});
 });
 
+/**
+ * Test if the code lenses can be corrected populated.
+ * @param docUri the uri of the target document
+ * @param expectedCodeLenses the expected code lenses
+ */
 async function testCodeLenses(
 	docUri: vscode.Uri,
 	expectedCodeLenses: { location: number[], mro: string[] }[],
@@ -69,10 +75,15 @@ async function testCodeLenses(
 				found = true;
 			}
 		});
-		assert.ok(found);
+		assert.ok(found);  // a correspondent code lens should exist
 	});
 };
 
+/**
+ * Test that a code lens will not be wrongly populated for a negative case.
+ * @param docUri the uri of the target document
+ * @param negativeCases the list of negative cases
+ */
 async function testNegativeCases(
 	docUri: vscode.Uri,
 	negativeCases: { location: number[] }[],
