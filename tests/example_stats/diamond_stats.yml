@@ -27,3 +27,9 @@ negative_cases:
   - location:  [5, 0]
   - location:  [25, 10]
   - location:  [53, 18]
+# the dummy content to dynamically add to the example file for testing
+dummy_content: ['', '', 'class Test:', '    pass', '']
+# the correspondent code lens of the dummy content
+dummy_code_lens:
+  location: [56, 6]
+  mro: ['Test', 'object']

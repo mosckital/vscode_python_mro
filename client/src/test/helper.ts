@@ -83,37 +83,28 @@ export async function setTestContent(content: string): Promise<boolean> {
 	return editor.edit(eb => eb.replace(all, content));
 }
 
-// dummy content to populate into test docs for testing
-let dummyNewContent = `
-
-
-class Test:
-	pass
-`;
-
-export let dummyNewCodeLens = {
-	location: [57, 6],
-	mro: ['Test', 'object']
-};
-
 /**
  * Add dummy content to a doc for testing purpose.
  * @param docUri the uri of the doc to add dummy content
  */
-export async function addContent(docUri: vscode.Uri) {
+export async function addContent(docUri: vscode.Uri, content: string) {
 	try {
 		let doc = await vscode.workspace.openTextDocument(docUri);
 		let editor = await vscode.window.showTextDocument(doc);
 		editor.edit(builder => {
 			let nLines = doc.lineCount;
 			let nCharLastLine = doc.lineAt(nLines - 1).text.length;
-			builder.insert(new vscode.Position(nLines, nCharLastLine), dummyNewContent);
+			builder.insert(new vscode.Position(nLines, nCharLastLine), content);
 		});
 	} catch (e) {
 		console.error(e);
 	}
 }
 
+/**
+ * Read the target YAML file in the YAMl file folder.
+ * @param yamlFileName the name of the target yaml file
+ */
 export function readYamlFile(yamlFileName: string) {
 	return yaml.safeLoad(readFileSync(getYamlPath(yamlFileName), 'utf8'));
 }

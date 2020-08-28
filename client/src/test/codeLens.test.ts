@@ -1,33 +1,36 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { getDocUri, activate, addContent, readYamlFile, waitFor, dummyNewCodeLens } from './helper';
+import { getDocUri, activate, addContent, readYamlFile, waitFor } from './helper';
 
 suite('Should show CodeLens', () => {
 	const docUri = getDocUri('diamond.py');
 
-	const expectedInfo = readYamlFile('diamond_stats.yml') as {
+	const testFileData = readYamlFile('diamond_stats.yml') as {
 		code_lenses: any[],
 		negative_cases: any[],
+		dummy_content: string[],
+		dummy_code_lens: any,
 	};
 
 	let finishedCodeLenses = false;
 	let finishedNegativeCases = false;
 
 	test('Check CodeLenses are corrected identified', async () => {
-		await testCodeLenses(docUri, expectedInfo.code_lenses);
+		await testCodeLenses(docUri, testFileData.code_lenses);
 		finishedCodeLenses = true;
 	});
 
 	test('Check against the negative cases', async () => {
-		await testNegativeCases(docUri, expectedInfo.negative_cases);
+		await testNegativeCases(docUri, testFileData.negative_cases);
 		finishedNegativeCases = true;
 	});
 
 	test('Check correctness after adding content', async () => {
 		await waitFor(() => (finishedCodeLenses && finishedNegativeCases), 3000);
-		await addContent(docUri);
-		let updatedLenses = expectedInfo.code_lenses;
-		updatedLenses.push(dummyNewCodeLens);
+		let newContent = testFileData.dummy_content.join('\n');
+		await addContent(docUri, newContent);
+		let updatedLenses = testFileData.code_lenses;
+		updatedLenses.push(testFileData.dummy_code_lens);
 		await testCodeLenses(docUri, updatedLenses);
 	});
 });
