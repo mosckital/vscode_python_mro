@@ -4,14 +4,11 @@ from typing import Sequence
 from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
+from test_mro_server.test_utils import EXAMPLE_FILE_ROOT, YAML_FILE_ROOT, gen_random_line
 
 
-TEST_ROOT = f'{path.abspath(path.dirname(__file__))}'
-ROOT_DIR = path.abspath(path.join(TEST_ROOT, '..'))
-TEST_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'examples')
-DIAMOND_FILE_PATH = path.join(TEST_FILE_ROOT, 'diamond.py')
-STATS_FILE_ROOT = path.join(ROOT_DIR, 'tests', 'example_stats')
-DIAMOND_STATS_PATH = path.join(STATS_FILE_ROOT, 'diamond_stats.yml')
+DIAMOND_FILE_PATH = path.join(EXAMPLE_FILE_ROOT, 'diamond.py')
+DIAMOND_STATS_PATH = path.join(YAML_FILE_ROOT, 'diamond_stats.yml')
 with open(DIAMOND_STATS_PATH, 'r') as stats_file:
     diamond_stats = yaml.load(stats_file, yaml.Loader)
 
@@ -40,6 +37,7 @@ NEW_RESULT_CONTENT = ['Test', 'object']
 class TestMROAnalyser:
     """Test suite for the MROAnalyser"""
 
+    #region old_tests
     @pytest.mark.parametrize(
         ('script_path',),
         [(DIAMOND_FILE_PATH,)]
@@ -51,7 +49,7 @@ class TestMROAnalyser:
     def test_update_fetch_hover(self, script_path: str, line: int, char: int,
                              expected: bool):
         """Test case for updating then fetching hover responses."""
-        analyser = MROAnalyser(TEST_FILE_ROOT)
+        analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
             assert (analyser.update_fetch_hover(script_path, (line, char))
@@ -74,7 +72,7 @@ class TestMROAnalyser:
             self, script_path: str, line: int, char: int, expected: Sequence[str]
         ):
         """Test case for updating, fetching and checking hover responses."""
-        analyser = MROAnalyser(TEST_FILE_ROOT)
+        analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
             hover = analyser.update_fetch_hover(script_path, (line, char))
@@ -100,7 +98,7 @@ class TestMROAnalyser:
             new_test_content: str, new_expected_result: Sequence[str]
         ):
         """Test case for updating, fetching and checking code lens responses."""
-        analyser = MROAnalyser(TEST_FILE_ROOT)
+        analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
         with open(script_path) as script:
             # test code lens result with the original file content
             analyser.replace_script_content(script_path, script.read())
@@ -132,27 +130,12 @@ class TestMROAnalyser:
     def test_update_fetch_code_lens(self, script_path: str,
                                     expected_count: int):
         """Test case for updating then fetching code lens responses."""
-        analyser = MROAnalyser(TEST_FILE_ROOT)
+        analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
         with open(script_path) as script:
             analyser.replace_script_content(script_path, script.read())
             assert len(
                 analyser.update_fetch_code_lens(script_path)
             ) == expected_count
-
-    @staticmethod
-    def gen_random_line(max_len: int) -> str:
-        """
-        Generate some random lines.
-        
-        Args:
-            max_len: the max number of lines
-        
-        Returns:
-            the generated lines
-        """
-        return ''.join(
-            chr(randint(97, 120)) for _ in range(randint(0, max_len))
-        )
 
     @pytest.mark.parametrize(
         ('n_times', 'max_lines', 'max_line_len'),
@@ -163,7 +146,7 @@ class TestMROAnalyser:
         """Test case for the replace_script_content() method."""
         for _ in range(n_times):
             content = '\n'.join(
-                TestMROAnalyser.gen_random_line(max_line_len)
+                gen_random_line(max_line_len)
                 for _ in range(max_lines)
             )
             analyser = MROAnalyser('')
@@ -184,7 +167,7 @@ class TestMROAnalyser:
             file_path = 'test_file.py'
             # generate original content
             original_lines = [
-                TestMROAnalyser.gen_random_line(max_line_len)
+                gen_random_line(max_line_len)
                 for _ in range(max_lines)
             ]
             original_content = '\n'.join(original_lines)
@@ -198,7 +181,7 @@ class TestMROAnalyser:
                 start_line, start_char = end_line, end_char
             # prepare incremental change content
             change_lines = [
-                TestMROAnalyser.gen_random_line(max_line_len)
+                gen_random_line(max_line_len)
                 for _ in range(max_lines)
             ]
             change_content = '\n'.join(change_lines)
@@ -225,7 +208,7 @@ class TestMROAnalyser:
     def test_update_code_lens_names_if_needed(self, script_path: str,
                                               expected_count: int):
         """Test if code lens can be correctely updated when needed."""
-        analyser = MROAnalyser(TEST_FILE_ROOT)
+        analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
         with open(script_path) as script:
             analyser.calculator.update_one(script_path)
             assert script_path not in analyser.calculator.get_code_lens(script_path)
@@ -233,3 +216,4 @@ class TestMROAnalyser:
             assert len(
                 analyser.update_fetch_code_lens(script_path)
             ) == expected_count
+    #endregion old_tests
