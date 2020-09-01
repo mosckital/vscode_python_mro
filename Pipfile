@@ -7,6 +7,7 @@ verify_ssl = true
 mypy = "*"
 pytest = "*"
 atomicwrites = "*"
+pyyaml = "*"
 
 [packages]
 python-jsonrpc-server = "*"
