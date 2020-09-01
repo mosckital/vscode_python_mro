@@ -4,7 +4,7 @@ from typing import Sequence
 from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
-from test_mro_server.test_utils import EXAMPLE_FILE_ROOT, YAML_FILE_ROOT, gen_random_line
+from test_mro_server.test_utils import EXAMPLE_FILE_ROOT, YAML_FILE_ROOT, gen_random_line, load_yaml
 
 
 DIAMOND_FILE_PATH = path.join(EXAMPLE_FILE_ROOT, 'diamond.py')
@@ -37,48 +37,39 @@ NEW_RESULT_CONTENT = ['Test', 'object']
 class TestMROAnalyser:
     """Test suite for the MROAnalyser"""
 
-    #region old_tests
     @pytest.mark.parametrize(
-        ('script_path',),
-        [(DIAMOND_FILE_PATH,)]
+        ['script_path', 'yaml_path'],
+        [
+            [DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
+        ],
     )
-    @pytest.mark.parametrize(
-        ('line', 'char', 'expected',),
-        DIAMOND_FILE_TEST_CASES
-    )
-    def test_update_fetch_hover(self, script_path: str, line: int, char: int,
-                             expected: bool):
-        """Test case for updating then fetching hover responses."""
+    def test_hover_success(self, script_path, load_yaml):
         analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
-        with open(script_path) as script:
-            analyser.replace_script_content(script_path, script.read())
-            assert (analyser.update_fetch_hover(script_path, (line, char))
-                    is not None) == expected
+        analyser.replace_script_content(script_path, open(script_path).read())
+        for lens in load_yaml['code_lenses']:
+            location, mro = lens['location'], lens['mro']
+            hover = analyser.update_fetch_hover(
+                script_path, (location[0], location[1])
+            )
+            assert hover and hover['contents'] == mro
     
     @pytest.mark.parametrize(
-        ('script_path',),
-        [(DIAMOND_FILE_PATH,)]
-    )
-    @pytest.mark.parametrize(
-        ('line', 'char', 'expected',),
+        ['script_path', 'yaml_path'],
         [
-            (l, c, r) for (l, c), r in zip(
-                DIAMOND_FILE_SUCCESS_RESULT_LOCATIONS,
-                DIAMOND_FILE_SUCCESS_RESULT_CONTENTS
-            )
-        ]
+            [DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
+        ],
     )
-    def test_successful_update_fetch_hover(
-            self, script_path: str, line: int, char: int, expected: Sequence[str]
-        ):
-        """Test case for updating, fetching and checking hover responses."""
+    def test_hover_failure(self, script_path, load_yaml):
         analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
-        with open(script_path) as script:
-            analyser.replace_script_content(script_path, script.read())
-            hover = analyser.update_fetch_hover(script_path, (line, char))
-            assert hover is not None
-            assert hover['contents'] == expected
+        analyser.replace_script_content(script_path, open(script_path).read())
+        for failure in load_yaml['negative_cases']:
+            location = failure['location']
+            hover = analyser.update_fetch_hover(
+                script_path, (location[0], location[1])
+            )
+            assert hover is None
 
+    #region old_tests
     @pytest.mark.parametrize(
         (
             'script_path', 'expected_count', 'expected',
