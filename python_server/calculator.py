@@ -1,5 +1,5 @@
 import jedi
-from typing import Sequence, Dict, Set
+from typing import Sequence, Dict, Set, List, Tuple
 from jedi.api import Script
 from jedi.api.classes import Name
 from python_server.parsed_class import ParsedClass
@@ -116,7 +116,9 @@ class MROCalculator:
             parsed.code_lens for parsed in self.parsed_names_by_path[script_path]
         ]
     
-    def get_code_lens_and_range(self, script_path: str):
+    def get_code_lens_and_range(
+        self, script_path: str
+    ) -> List[Tuple[Dict, Tuple[Tuple[int, int], Tuple[int, int]]]]:
         """
         Get the list of the code lens and the range of the associate parsed
         class for the given target script.
