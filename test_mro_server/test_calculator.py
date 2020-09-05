@@ -14,13 +14,13 @@ class TestMROCalculator:
 	"""Test suite for the MROCalculator"""
 
 	@staticmethod
-	def prepare_analyser(script_path: str = None):
+	def prepare_calculator(script_path: str = None):
 		"""Prepare a MROAnalyser populated with the content of the given script.
 		"""
 		analyser = MROAnalyser(EXAMPLE_FILE_ROOT)
 		if script_path:
 			analyser.replace_script_content(script_path, open(script_path).read())
-		return analyser
+		return analyser.calculator
 	
 	@staticmethod
 	def compare_code_lenses(actual_lenses, expected_lenses):
@@ -81,9 +81,8 @@ class TestMROCalculator:
 		],
 	)
 	def test_update_script(self, script_path, load_yaml):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser(script_path)
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
 		# the script should be already in the content cache, but not parsed into
 		# a Jedi Script
 		assert script_path in calculator.content_cache
@@ -100,9 +99,8 @@ class TestMROCalculator:
 		],
 	)
 	def test_mark_script_outdated(self, script_path, load_yaml):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser(script_path)
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
 		# the script should be already in the content cache, but not updated, so
 		# acting like outdated
 		assert script_path in calculator.content_cache
@@ -120,9 +118,8 @@ class TestMROCalculator:
 
 	@pytest.mark.parametrize('n_outdated', [100])
 	def test_update_all(self, n_outdated: int):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser()
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator()
 		# inject fake script paths into outdated_scripts
 		calculator.outdated_scripts.update(
 			f'fake_path_{i}' for i in range(n_outdated)
@@ -136,9 +133,8 @@ class TestMROCalculator:
 	def test_update_one(self, n_outdated: int):
 		# the fake target script path
 		target_script = 'target_script'
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser()
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator()
 		# inject fake script paths into outdated_scripts
 		calculator.outdated_scripts.update(
 			f'fake_path_{i}' for i in range(n_outdated)
@@ -156,9 +152,8 @@ class TestMROCalculator:
 		],
 	)
 	def test_get_code_lens(self, script_path, load_yaml):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser(script_path)
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
 		# update and then check the code lenses are correct
 		calculator.update_all()
 		lenses = calculator.get_code_lens(script_path)
@@ -171,9 +166,8 @@ class TestMROCalculator:
 		],
 	)
 	def test_get_code_lens_and_range(self, script_path, load_yaml):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser(script_path)
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
 		# update the script
 		calculator.update_all()
 		# fetch the code lenses and ranges and separate them
@@ -211,9 +205,8 @@ class TestMROCalculator:
 		],
 	)
 	def test_is_original_class(self, script_path, load_yaml):
-		# prepare the analyser and the calculator
-		analyser = self.prepare_analyser(script_path)
-		calculator = analyser.calculator
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
 		# update the script
 		calculator.update_all()
 		# fetch the correspondent Jedi Script and its Jedi Context
@@ -228,3 +221,26 @@ class TestMROCalculator:
 			if calculator._is_original_class(name, context):
 				n_original += 1
 		assert n_original == len(load_yaml['code_lenses'])
+	
+	@pytest.mark.parametrize(
+		['script_path', 'yaml_path'],
+		[
+			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
+		],
+	)
+	def test_parse_class_by_jedi_name(self, script_path, load_yaml):
+		# prepare the calculator
+		calculator = self.prepare_calculator(script_path)
+		# update the script
+		calculator.update_all()
+		# fetch the correspondent Jedi Script and its Jedi Context
+		script = calculator.jedi_scripts_by_path[script_path]
+		context = script.get_context()
+		from python_server.parsed_package_class import ParsedPackageClass
+		from python_server.parsed_custom_class import ParsedCustomClass
+		for name in script.get_names():
+			parsed_class = calculator.parse_class_by_jedi_name(name)
+			if calculator._is_original_class(name, context):
+				assert isinstance(parsed_class, ParsedCustomClass)
+			else:
+				assert isinstance(parsed_class, ParsedPackageClass)
