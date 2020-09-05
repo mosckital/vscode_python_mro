@@ -203,3 +203,28 @@ class TestMROCalculator:
 		# the location should be within the corresponding range
 		for ran, loc in zip(ranges, locations):
 			assert ran[0] <= loc < ran[1]
+
+	@pytest.mark.parametrize(
+		['script_path', 'yaml_path'],
+		[
+			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
+		],
+	)
+	def test_is_original_class(self, script_path, load_yaml):
+		# prepare the analyser and the calculator
+		analyser = self.prepare_analyser(script_path)
+		calculator = analyser.calculator
+		# update the script
+		calculator.update_all()
+		# fetch the correspondent Jedi Script and its Jedi Context
+		script = calculator.jedi_scripts_by_path[script_path]
+		context = script.get_context()
+		# every ParsedClass should be based on an original Jedi Name
+		for name in calculator.parsed_names_by_path[script_path]:
+			assert calculator._is_original_class(name.jedi_name, context)
+		# the number of original name should equal to the number of code lenses
+		n_original = 0
+		for name in script.get_names():
+			if calculator._is_original_class(name, context):
+				n_original += 1
+		assert n_original == len(load_yaml['code_lenses'])
