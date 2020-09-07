@@ -14,18 +14,22 @@ YAML_FILE_ROOT = path.abspath(path.join(TEST_FILE_ROOT, '..', 'tests', 'example_
 """The root directory of the yaml files."""
 
 
-def gen_random_line(max_len: int) -> str:
+def gen_random_line(min_len: int, max_len: int = 0) -> str:
 	"""
 	Generate some random lines.
 	
 	Args:
-		max_len: the max number of lines
+		min_len: the min number of lines if max_len is not 0, otherwise the max
+		number of the lines
+		max_len: the max number of lines if not 0
 	
 	Returns:
 		the generated lines
 	"""
+	if not max_len:
+		min_len, max_len = 0, min_len
 	return ''.join(
-		chr(randint(97, 120)) for _ in range(randint(0, max_len))
+		chr(randint(97, 120)) for _ in range(randint(min_len, max_len))
 	)
 
 
