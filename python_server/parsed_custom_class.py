@@ -42,19 +42,12 @@ class ParsedCustomClass(ParsedClass):
             for b in self._class_def.bases
         ] if self._class_def.bases else [self.OBJECT_CLASS]
         self._mro_parsed_list = None
-        self._code_lens = None
 
     @property
     def mro_parsed_list(self) -> Sequence[ParsedClass]:
         if not self._mro_parsed_list:
             self._mro_parsed_list = self._get_mro_parsed_list()
         return self._mro_parsed_list
-    
-    @property
-    def code_lens(self):
-        if not self._code_lens:
-            self._code_lens = self.get_code_lens()
-        return self._code_lens
 
     def _get_code_lines(self):
         """Get the code block of the class definition, separated by lines."""
