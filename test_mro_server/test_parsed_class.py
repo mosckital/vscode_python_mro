@@ -5,7 +5,7 @@ import jedi
 from random import randint
 from typing import Sequence
 from python_server.parsed_class import ParsedClass
-from test_mro_server.test_utils import gen_random_line
+from test_mro_server.test_utils import TestUtils
 from jedi.api.classes import Name
 
 
@@ -46,10 +46,10 @@ class MockParsedClass(ParsedClass):
 	@staticmethod
 	def random_jedi_name(max_name_len: int = 10) -> Name:
 		"""Randomly generate a Jedi Name for class definition."""
-		class_name = gen_random_line(1, max_name_len)
+		class_name = TestUtils.gen_random_line(1, max_name_len)
 		# regenerate the class name if the generated is a keyword
 		while keyword.iskeyword(class_name):
-			class_name = gen_random_line(1, max_name_len)
+			class_name = TestUtils.gen_random_line(1, max_name_len)
 		code = f'class {class_name}: pass'
 		return jedi.Script(code=code).infer(1, 6)[0]
 
