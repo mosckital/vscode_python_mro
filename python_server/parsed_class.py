@@ -22,6 +22,7 @@ class ParsedClass(ABC):
         self.full_name = self.jedi_name.full_name if self.jedi_name.full_name else ''
         self.start_pos : Tuple[int, int] = (0, 0)
         self.end_pos : Tuple[int, int] = (0, 0)
+        self._code_lens = None
 
     @property
     @abstractmethod
@@ -30,10 +31,11 @@ class ParsedClass(ABC):
         pass
 
     @property
-    @abstractmethod
     def code_lens(self) -> Dict:
         """The code lens correspondent to this parsed class."""
-        pass
+        if not self._code_lens:
+            self._code_lens = self.get_code_lens()
+        return self._code_lens
 
     @property
     def mro_list(self) -> Sequence[str]:
@@ -52,7 +54,7 @@ class ParsedClass(ABC):
                 'end': {
                     # changing to line starting with 0 (LSP standard)
                     'line': self.end_pos[0] - 1,
-                    'character': self.end_pos[1],
+                    'character': self.end_pos[1] - 1,
                 }
             },
             'data': self.mro_list,

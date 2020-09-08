@@ -1,0 +1,35 @@
+# code lenses found in the diamond.py file
+# the line and character of the locations are 0-based according to the Language
+# Server Protocol
+code_lenses:
+  - location:  [8, 6]
+    mro: ['A', 'Generic', 'object']
+  - location:  [23, 6]
+    mro: ['B', 'A', 'Generic', 'object']
+  - location:  [35, 6]
+    mro: ['C', 'A', 'Generic', 'object']
+  - location:  [47, 6]
+    mro: ['D', 'B', 'C', 'A', 'Generic', 'object']
+# the negative examples where no code lens should be parsed
+negative_cases:
+  # keyword 'class' should not be detected
+  - location:  [8, 3]
+  - location:  [23, 0]
+  - location:  [35, 5]
+  - location:  [47, 4]
+  # base class list should not be detected
+  - location:  [8, 10]
+  - location:  [23, 8]
+  - location:  [35, 7]
+  - location:  [47, 10]
+  # function or other stuff should not be detected
+  - location:  [2, 6]
+  - location:  [5, 0]
+  - location:  [25, 10]
+  - location:  [53, 18]
+# the dummy content to dynamically add to the example file for testing
+dummy_content: ['', '', 'class Test:', '    pass', '']
+# the correspondent code lens of the dummy content
+dummy_code_lens:
+  location: [56, 6]
+  mro: ['Test', 'object']

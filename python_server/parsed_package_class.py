@@ -14,15 +14,10 @@ class ParsedPackageClass(ParsedClass):
         self._mro_parsed_list = [self]
         if self.jedi_name.full_name != self.OBJECT_CLASS.full_name:
             self._mro_parsed_list.append(PARSED_OBJECT_CLASS)
-        self._code_lens = self.get_code_lens()
 
     @property
     def mro_parsed_list(self):
         return self._mro_parsed_list
-
-    @property
-    def code_lens(self):
-        return self._code_lens
 
 
 PARSED_OBJECT_CLASS = ParsedPackageClass(ParsedPackageClass.OBJECT_CLASS)

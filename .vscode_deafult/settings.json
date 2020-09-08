@@ -1,9 +1,13 @@
 {
+	// settings inherited from scaffolding
 	"editor.insertSpaces": false,
 	"tslint.enable": true,
 	"typescript.tsc.autoDetect": "off",
 	"typescript.preferences.quoteStyle": "single",
 	"editor.codeActionsOnSave": {
 		"source.fixAll.eslint": true
-	}
+	},
+	// settings for Plant UML
+	"plantuml.diagramsRoot": "umls",
+	"plantuml.exportOutDir": "umls/pics"
 }

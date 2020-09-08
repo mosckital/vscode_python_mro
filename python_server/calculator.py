@@ -1,5 +1,5 @@
 import jedi
-from typing import Sequence, Dict, Set
+from typing import Sequence, Dict, Set, List, Tuple
 from jedi.api import Script
 from jedi.api.classes import Name
 from python_server.parsed_class import ParsedClass
@@ -116,7 +116,9 @@ class MROCalculator:
             parsed.code_lens for parsed in self.parsed_names_by_path[script_path]
         ]
     
-    def get_code_lens_and_range(self, script_path: str):
+    def get_code_lens_and_range(
+        self, script_path: str
+    ) -> List[Tuple[Dict, Tuple[Tuple[int, int], Tuple[int, int]]]]:
         """
         Get the list of the code lens and the range of the associate parsed
         class for the given target script.
@@ -171,12 +173,20 @@ class MROCalculator:
         Returns:
             The parsed class in ParsedClass
         """
+        # case of being the object class
         if jedi_name.full_name == 'builtins.object':
             return PARSED_OBJECT_CLASS
+        # case of a class not defined by a recognised script, so external class
         if not jedi_name.module_path:
             return ParsedPackageClass(jedi_name)
-        script_path = jedi_name.module_path
-        if script_path in self.jedi_scripts_by_path:
+        # case of a custom class definition, which should have a dot-separate
+        # full name starting with the full name of the module/script, and its
+        # type should be `class`. There is case that the first condition is
+        # satisfied but the second not, like a type alias definition/assignment
+        # has a type `statement`.
+        if jedi_name.full_name.startswith(
+            jedi_name.module_name
+        ) and jedi_name.type == 'class':
             return ParsedCustomClass(jedi_name, self)
         else:
             return ParsedPackageClass(jedi_name)
