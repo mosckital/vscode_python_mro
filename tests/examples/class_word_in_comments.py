@@ -53,3 +53,15 @@ class MultiLineDef(  # unnecessary class word, ABC, WordInComments
 	WordInComments,  # unnecessary class word, ABC, WordInComments
 ):  # unnecessary class word, ABC, WordInComments
 	pass
+
+
+class DefInComments(
+	MultiLineDef,  # class TestDef: pass
+):  # class TestDef: pass
+	"""
+	class TestDef:
+		pass
+	"""
+
+	VAL = "class TestDef: pass"
+	"""class TestDef: pass"""
