@@ -2,11 +2,7 @@ import pytest
 from os import path
 from random import randint
 from python_server.analyser import MROAnalyser
-from test_mro_server.test_utils import TestUtils, load_yaml
-
-
-DIAMOND_FILE_PATH = path.join(TestUtils.EXAMPLE_FILE_ROOT, 'diamond.py')
-DIAMOND_STATS_PATH = path.join(TestUtils.YAML_FILE_ROOT, 'diamond_stats.yml')
+from test_mro_server.test_utils import TestUtils, EX_YAML_PAIRS, load_yaml
 
 
 class TestMROAnalyser:
@@ -15,14 +11,12 @@ class TestMROAnalyser:
     # region hover_tests
     @pytest.mark.parametrize(
         ['script_path', 'yaml_path'],
-        [
-            [DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-        ],
+        EX_YAML_PAIRS,
     )
     def test_update_fetch_hover_success(self, script_path, load_yaml):
         """Test update_fetch_hover() against the successful test cases."""
         analyser = TestUtils.prepare_analyser(script_path)
-        for lens in load_yaml['code_lenses']:
+        for lens in load_yaml.get('code_lenses', []):
             location, mro = lens['location'], lens['mro']
             hover = analyser.update_fetch_hover(
                 script_path, (location[0], location[1])
@@ -31,14 +25,12 @@ class TestMROAnalyser:
     
     @pytest.mark.parametrize(
         ['script_path', 'yaml_path'],
-        [
-            [DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-        ],
+        EX_YAML_PAIRS,
     )
     def test_update_fetch_hover_failure(self, script_path, load_yaml):
         """Test update_fetch_hover() against the failure test cases."""
         analyser = TestUtils.prepare_analyser(script_path)
-        for failure in load_yaml['negative_cases']:
+        for failure in load_yaml.get('negative_cases', []):
             location = failure['location']
             hover = analyser.update_fetch_hover(
                 script_path, (location[0], location[1])
@@ -49,14 +41,12 @@ class TestMROAnalyser:
     # region code_lens_tests
     @pytest.mark.parametrize(
         ['script_path', 'yaml_path'],
-        [
-            [DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-        ],
+        EX_YAML_PAIRS,
     )
     def test_update_fetch_code_lens(self, script_path, load_yaml):
         """Test update_fetch_code_lens() against the successful test cases."""
         analyser = TestUtils.prepare_analyser(script_path)
-        expected_lenses = load_yaml['code_lenses']
+        expected_lenses = load_yaml.get('code_lenses', [])
         # test code lens result with the original file content
         lenses = analyser.update_fetch_code_lens(script_path)
         TestUtils.compare_code_lenses(lenses, expected_lenses)

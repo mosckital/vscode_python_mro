@@ -1,6 +1,8 @@
-# code lenses found in the diamond.py file
-# the line and character of the locations are 0-based according to the Language
-# Server Protocol
+# expected results (code lenses and negative cases) for the
+# diamond.py file
+# the line and character of the locations are 0-based according to the
+# Language Server Protocol, the Python MRO language server will convert from
+# 0-based to 1-based (for Jedi or editor line count) internally if required
 code_lenses:
   - location:  [8, 6]
     mro: ['A', 'Generic', 'object']
