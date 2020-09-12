@@ -65,3 +65,8 @@ class DefInComments(
 
 	VAL = "class TestDef: pass"
 	"""class TestDef: pass"""
+
+"""
+Unnecessary multi-line at the end of file with out a new empty line for ending.
+This aims to test if the language server can deal with this non-recommended end.
+"""

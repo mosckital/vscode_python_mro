@@ -156,10 +156,10 @@ class MROCalculator:
             `True` if the class is an originally defined class or `False`
             otherwise
         """
-        if not script_context.full_name:
+        if not script_context.module_name:
             return class_name.type == 'class'
         return class_name.type == 'class' and class_name.full_name.startswith(
-            script_context.full_name)
+            script_context.module_name)
     
     def parse_class_by_jedi_name(
         self, jedi_name: Name
