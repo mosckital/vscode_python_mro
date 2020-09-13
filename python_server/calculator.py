@@ -158,8 +158,12 @@ class MROCalculator:
         """
         if not script_context.module_name:
             return class_name.type == 'class'
-        return class_name.type == 'class' and class_name.full_name.startswith(
-            script_context.module_name)
+        # use `class_name.goto()[0]` to fetch the full content Jedi Name which
+        # has the `full_name` field
+        return class_name.type == 'class' and \
+            class_name.goto()[0].full_name.startswith(
+            script_context.module_name
+        )
     
     def parse_class_by_jedi_name(
         self, jedi_name: Name
@@ -184,7 +188,9 @@ class MROCalculator:
         # type should be `class`. There is case that the first condition is
         # satisfied but the second not, like a type alias definition/assignment
         # has a type `statement`.
-        if jedi_name.full_name.startswith(
+        # use `class_name.goto()[0]` to fetch the full content Jedi Name which
+        # has the `full_name` field
+        if jedi_name.goto()[0].full_name.startswith(
             jedi_name.module_name
         ) and jedi_name.type == 'class':
             return ParsedCustomClass(jedi_name, self)
