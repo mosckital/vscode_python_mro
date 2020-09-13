@@ -54,7 +54,7 @@ class TestMROAnalyser:
         if 'dummy_content' not in load_yaml:
             return
         # add new test content into the file
-        lines = analyser.content_cache[script_path]
+        lines = analyser.calculator.content_cache[script_path]
         n_last_line = len(lines) - 1
         n_last_char = len(lines[-1])
         analyser.update_script_content(
@@ -85,7 +85,7 @@ class TestMROAnalyser:
             analyser = MROAnalyser('')
             file_path = 'test_file.py'
             analyser.replace_script_content(file_path, content)
-            assert '\n'.join(analyser.content_cache[file_path]) == content
+            assert '\n'.join(analyser.calculator.content_cache[file_path]) == content
 
     @pytest.mark.parametrize(
         ('n_times', 'max_lines', 'max_line_len'),
@@ -132,5 +132,5 @@ class TestMROAnalyser:
             analyser.update_script_content(file_path, (start_line, start_char),
                                            (end_line, end_char),
                                            change_content)
-            assert '\n'.join(analyser.content_cache[file_path]) == new_content
+            assert '\n'.join(analyser.calculator.content_cache[file_path]) == new_content
     # endregion content_update_functions

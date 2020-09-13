@@ -18,11 +18,25 @@ class ParsedCustomClass(ParsedClass):
     def __init__(self, jedi_name: Name, calculator: MROCalculator) -> None:
         super().__init__(jedi_name)
         self._calculator = calculator
-        if (not jedi_name.module_path) or (jedi_name.module_path not in calculator.jedi_scripts_by_path):
+        module_path = jedi_name.module_path
+        # the Jedi Name should have `module_path` available 
+        if (not module_path):
             raise ValueError("Jedi Name's module name is not available or not registered.")
-        self._jedi_script = calculator.jedi_scripts_by_path[jedi_name.module_path]
+        # load the relevant script if not yet
+        if module_path not in calculator.content_cache:
+            with open(module_path) as loaded_module:
+                calculator.replace_content_in_cache(module_path, loaded_module.read())
+        # update the analysis result of the relevant script if outdated
+        if module_path in calculator.outdated_scripts:
+            calculator.update_one(module_path)
+        # the script should now be analysed and its path can be used to search
+        if module_path not in calculator.jedi_scripts_by_path:
+            raise ValueError("Error when loading Jedi Name's module content into Calculator.")
+        # fetch the relevant Jedi Script, get code lines and class definition
+        self._jedi_script = calculator.jedi_scripts_by_path[module_path]
         self._lines = self._get_code_lines()
         self._class_def = self._get_class_def_ast_from_lines()
+        # the Jedi Name should have the position information
         if self.jedi_name.line is None or self.jedi_name.column is None:
             raise ValueError(f'Parsed class {self.jedi_name.full_name} has no line or column information.')
         # positions with line starting with 1 (Jedi and AST standard)
@@ -34,13 +48,19 @@ class ParsedCustomClass(ParsedClass):
             self.jedi_name.line,
             self.jedi_name.column + len(self._class_def.name)
         )
-        self._base_parent_names : Sequence[Name] = [
+        # calculate the Jedi Names of the base parents
+        self._base_parent_names = [
             self._jedi_script.infer(
                 b.lineno + self.jedi_name.line - 1,
                 b.col_offset
             )[0]
             for b in self._class_def.bases
         ] if self._class_def.bases else [self.OBJECT_CLASS]
+        # refine the calculated Jedi Names of the base parents to full content
+        for i, base in enumerate(self._base_parent_names):
+            full_candidates = base.goto()
+            if full_candidates and isinstance(full_candidates[0], Name):
+                self._base_parent_names[i] = full_candidates[0]
         self._mro_parsed_list = None
 
     @property
@@ -75,7 +95,7 @@ class ParsedCustomClass(ParsedClass):
         """Get the list of base parent classes in ParseClass format."""
         return [
             self._calculator.parsed_name_by_full_name.get(
-                base_name.full_name, ParsedPackageClass(base_name)
+                base_name.full_name, ParsedCustomClass(base_name, self._calculator)
             ) if base_name.full_name else ParsedPackageClass(base_name)
             for base_name in self._base_parent_names
         ]

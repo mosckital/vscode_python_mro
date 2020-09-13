@@ -5,7 +5,14 @@ from test_mro_server.test_utils import TestUtils, EX_YAML_PAIRS, load_yaml
 
 
 class TestMROCalculator:
-	"""Test suite for the MROCalculator"""
+	"""Test suite for the MROCalculator.
+	
+	The replace_content_in_cache() and update_content_in_cache() are tested in
+	test_analyser/TestMROAnalyser by test_replace_script_content() and
+	test_update_script_content() as MROAnalyser.replace_script_content() and
+	MROAnalyser.update_script_content() are actually wrappers of the two target
+	functions.
+	"""
 
 	@staticmethod
 	def assert_script_updated(
