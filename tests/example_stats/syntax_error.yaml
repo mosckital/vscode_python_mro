@@ -1,0 +1,12 @@
+# expected results (code lenses and negative cases) for the
+# syntax_error.py file
+# the line and character of the locations are 0-based according to the
+# Language Server Protocol, the Python MRO language server will convert from
+# 0-based to 1-based (for Jedi or editor line count) internally if required
+code_lenses:
+  # the good class declarations should be recognised
+  - location: [11, 6]
+    mro: ['GoodClass', 'ABC', 'object']
+negative_cases:
+  # the bad class declarations should be ignored
+  - location:  [17, 6]

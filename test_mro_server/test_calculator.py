@@ -200,6 +200,9 @@ class TestMROCalculator:
 		from python_server.parsed_package_class import ParsedPackageClass
 		from python_server.parsed_custom_class import ParsedCustomClass
 		for name in script.get_names():
+			# ignore the names that are not about class declarations
+			if name.type != 'class':
+				continue
 			parsed_class = calculator.parse_class_by_jedi_name(name)
 			if calculator._is_original_class(name, context):
 				assert isinstance(parsed_class, ParsedCustomClass)
