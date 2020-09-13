@@ -46,7 +46,7 @@ class TestUtils:
 		"""
 		if not ext:
 			ext = ''
-		return set(
+		candidates = set(
 			glob.iglob(
 				path.join(dir, '**/[!_]*' + ext), recursive=True
 			)
@@ -55,6 +55,7 @@ class TestUtils:
 				path.join(dir, '**/__pycache__/*'), recursive=True
 			)
 		)
+		return [c for c in candidates if path.isfile(c)]
 
 	@classmethod
 	def get_example_stats_pairs(
@@ -75,8 +76,8 @@ class TestUtils:
 		for ex_path in cls.get_target_files(ex_dir):
 			# check if it's an example file
 			if cls.EXAMPLE_FILE_ROOT_CHECKER(ex_path):
-				common_file_name = path.splitext(path.basename(ex_path))[0]
-				stats_path = path.join(stats_dir, f'{common_file_name}.yaml')
+				no_ext_path = path.splitext(ex_path)[0]
+				stats_path = no_ext_path.replace(ex_dir, stats_dir) + '.yaml'
 				# check if the corresponding stats file exists
 				if path.exists(stats_path) and path.isfile(stats_path) and \
 					cls.YAML_FILE_ROOT_CHECKER(stats_path):
