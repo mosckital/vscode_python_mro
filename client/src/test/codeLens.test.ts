@@ -1,38 +1,37 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { getDocUri, activate, addContent, readYamlFile, waitFor } from './helper';
+import { activate, addContent, waitFor, EX_STATS_PAIRS } from './helper';
 
 suite('Should show CodeLens', () => {
-	const docUri = getDocUri('diamond.py');
+	EX_STATS_PAIRS.forEach(([exUri, statsObj]) => {
+		let finishedCodeLenses = false;
+		let finishedNegativeCases = false;
 
-	const testFileData = readYamlFile('diamond.yaml') as {
-		code_lenses: any[],
-		negative_cases: any[],
-		dummy_content: string[],
-		dummy_code_lens: any,
-	};
+		if (statsObj.code_lenses) {
+			test('Check CodeLenses are corrected identified', async () => {
+				await testCodeLenses(exUri, statsObj.code_lenses);
+				finishedCodeLenses = true;
+			});
+		}
 
-	let finishedCodeLenses = false;
-	let finishedNegativeCases = false;
+		if (statsObj.negative_cases) {
+			test('Check against the negative cases', async () => {
+				await testNegativeCases(exUri, statsObj.negative_cases);
+				finishedNegativeCases = true;
+			});
+		}
 
-	test('Check CodeLenses are corrected identified', async () => {
-		await testCodeLenses(docUri, testFileData.code_lenses);
-		finishedCodeLenses = true;
-	});
-
-	test('Check against the negative cases', async () => {
-		await testNegativeCases(docUri, testFileData.negative_cases);
-		finishedNegativeCases = true;
-	});
-
-	test('Check correctness after adding content', async () => {
-		// we should wait until the tests on the original content have finished
-		await waitFor(() => (finishedCodeLenses && finishedNegativeCases), 3000);
-		let newContent = testFileData.dummy_content.join('\n');
-		await addContent(docUri, newContent);
-		let updatedLenses = testFileData.code_lenses;
-		updatedLenses.push(testFileData.dummy_code_lens);
-		await testCodeLenses(docUri, updatedLenses);
+		if (statsObj.dummy_content && statsObj.dummy_code_lens) {
+			test('Check correctness after adding content', async () => {
+				// we should wait until the tests on the original content have finished
+				await waitFor(() => (finishedCodeLenses && finishedNegativeCases), 3000);
+				let newContent = statsObj.dummy_content.join('\n');
+				await addContent(exUri, newContent);
+				let updatedLenses = statsObj.code_lenses;
+				updatedLenses.push(statsObj.dummy_code_lens);
+				await testCodeLenses(exUri, updatedLenses);
+			});
+		}
 	});
 });
 

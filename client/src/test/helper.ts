@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
-import { readFileSync } from 'fs';
+import * as glob from 'glob';
+import { readFileSync, existsSync } from 'fs';
 
 export let doc: vscode.TextDocument;
 export let editor: vscode.TextEditor;
@@ -99,37 +100,48 @@ export async function waitFor(condition: () => boolean, timeout: number = 5000) 
 }
 
 /**
- * Get the path of a test document given its name.
- * All test documents are in a same folder.
- * @param p the test document name
+ * Get all the pairs of test example files and their correspondent stats files.
+ * The test example file will then be represented as a vscode.Uri and the stats
+ * file will be loaded into an object for further processing.
+ * @param exDir the directory of the example files
+ * @param statsDir the directory of the stats files
  */
-export const getDocPath = (p: string) => {
-	return path.resolve(__dirname, '../../../tests/examples', p);
-};
-
-/**
- * Get the uri of a test document given its name.
- * @param p the test document name
- */
-export const getDocUri = (p: string) => {
-	return vscode.Uri.file(getDocPath(p));
-};
-
-/**
- * Get the path of a test stats YAML document given its name.
- * All test stats documents are in a same folder.
- * @param p the test stats document name
- */
-export const getYamlPath = (p: string) => {
-	return path.resolve(__dirname, '../../../tests/example_stats', p);
-};
-
-/**
- * Read the target YAML file in the YAMl file folder.
- * @param yamlFileName the name of the target yaml file
- */
-export function readYamlFile(yamlFileName: string) {
-	return yaml.safeLoad(readFileSync(getYamlPath(yamlFileName), 'utf8'));
+function getExampleStatsPairs(exDir: string, statsDir: string) {
+	// get all the Python files at first
+	let candidateFiles = glob.sync(path.join(exDir, '**/[!_]*.py'));
+	let cacheFiles = glob.sync(path.join(exDir, '**/__pycache__/*'));
+	let exFiles = candidateFiles.filter(
+		(candidate) => !cacheFiles.includes(candidate)
+	);
+	// place holder for the wanted pairs
+	type statsObject = {
+		code_lenses?: any[],
+		negative_cases?: any[],
+		dummy_content?: string[],
+		dummy_code_lens?: any,
+	};
+	var pairs : [vscode.Uri, statsObject][] = [];
+	exFiles.forEach(exFile => {
+		let statsFile = exFile.replace(exDir, statsDir).replace('.py', '.yaml');
+		if (existsSync(statsFile)) {
+			pairs.push([
+				vscode.Uri.file(exFile),
+				yaml.safeLoad(readFileSync(statsFile, 'utf8')) as statsObject,
+			]);
+		}
+	});
+	return pairs;
 }
+
+/**
+ * The prepared list of all the pairs of the test example files and their
+ * correspondent stats files in the project.
+ * The test example files are represented as a vscode.Uri and the stats files
+ * are loaded into an object for further processing.
+ */
+export const EX_STATS_PAIRS = getExampleStatsPairs(
+	path.resolve(__dirname, '../../../tests/examples'),
+	path.resolve(__dirname, '../../../tests/example_stats'),
+);
 
 //#endregion sys_utils

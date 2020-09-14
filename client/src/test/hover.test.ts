@@ -1,25 +1,22 @@
 import * as vscode from 'vscode';
 import * as assert from 'assert';
-import { getDocUri, activate, readYamlFile } from './helper';
+import { activate, EX_STATS_PAIRS } from './helper';
 
 suite('Should show Hover', () => {
-	const docUri = getDocUri('diamond.py');
-
-	const testFileData = readYamlFile('diamond.yaml') as {
-		code_lenses: any[],
-		negative_cases: any[],
-		dummy_content: string[],
-		dummy_code_lens: any,
-	};
-
-	test('Check against all target hovers', async () => {
-		await activate(docUri);
-		await testHovers(docUri, testFileData.code_lenses);
-	});
-
-	test('Check against all negative cases', async () => {
-		await activate(docUri);
-		await testHovers(docUri, testFileData.negative_cases);
+	EX_STATS_PAIRS.forEach(([exUri, statsObj]) => {
+		if (statsObj.code_lenses) {
+			test(`Check against all target hovers for ${exUri}`, async () => {
+				await activate(exUri);
+				await testHovers(exUri, statsObj.code_lenses);
+			});
+		};
+		
+		if (statsObj.negative_cases) {
+			test(`Check against all negative cases for ${exUri}`, async () => {
+				await activate(exUri);
+				await testHovers(exUri, statsObj.negative_cases);
+			});
+		}
 	});
 });
 
