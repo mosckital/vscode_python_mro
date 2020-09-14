@@ -16,6 +16,7 @@ class ParsedClass(ABC):
 
     OBJECT_CLASS : Name = jedi.Script(code='object').infer(1, 0)[0]
     """A Jedi Name to represent the `object` class."""
+    CONFLICT_MRO_MSG = 'Conflict MRO!!!'
 
     def __init__(self, jedi_name: Name) -> None:
         self.jedi_name = jedi_name
@@ -40,7 +41,10 @@ class ParsedClass(ABC):
     @property
     def mro_list(self) -> Sequence[str]:
         """The MRO list of the class."""
-        return [parsed.jedi_name.name for parsed in self.mro_parsed_list]
+        try:
+            return [parsed.jedi_name.name for parsed in self.mro_parsed_list]
+        except TypeError:
+            return [self.CONFLICT_MRO_MSG]    
     
     def get_code_lens(self):
         """Get the Code Lens associated with this parsed class."""

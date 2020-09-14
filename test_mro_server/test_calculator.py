@@ -1,15 +1,18 @@
 import pytest
 from os import path
 from python_server.calculator import MROCalculator
-from test_mro_server.test_utils import TestUtils, load_yaml
-
-
-DIAMOND_FILE_PATH = path.join(TestUtils.EXAMPLE_FILE_ROOT, 'diamond.py')
-DIAMOND_STATS_PATH = path.join(TestUtils.YAML_FILE_ROOT, 'diamond_stats.yml')
+from test_mro_server.test_utils import TestUtils, EX_YAML_PAIRS, load_yaml
 
 
 class TestMROCalculator:
-	"""Test suite for the MROCalculator"""
+	"""Test suite for the MROCalculator.
+	
+	The replace_content_in_cache() and update_content_in_cache() are tested in
+	test_analyser/TestMROAnalyser by test_replace_script_content() and
+	test_update_script_content() as MROAnalyser.replace_script_content() and
+	MROAnalyser.update_script_content() are actually wrappers of the two target
+	functions.
+	"""
 
 	@staticmethod
 	def assert_script_updated(
@@ -28,7 +31,7 @@ class TestMROCalculator:
 		names = calculator.parsed_names_by_path[script_path]
 		TestUtils.compare_code_lenses(
 			[name.code_lens for name in names],
-			load_yaml['code_lenses'],
+			load_yaml.get('code_lenses', []),
 		)
 		for name in names:
 			assert name.full_name in calculator.parsed_name_by_full_name
@@ -52,9 +55,7 @@ class TestMROCalculator:
 
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_update_script(self, script_path, load_yaml):
 		# prepare the calculator
@@ -70,9 +71,7 @@ class TestMROCalculator:
 
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_mark_script_outdated(self, script_path, load_yaml):
 		# prepare the calculator
@@ -123,9 +122,7 @@ class TestMROCalculator:
 	
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_get_code_lens(self, script_path, load_yaml):
 		# prepare the calculator
@@ -133,13 +130,14 @@ class TestMROCalculator:
 		# update and then check the code lenses are correct
 		calculator.update_all()
 		lenses = calculator.get_code_lens(script_path)
-		TestUtils.compare_code_lenses(lenses, load_yaml['code_lenses'])
+		TestUtils.compare_code_lenses(
+			lenses,
+			load_yaml.get('code_lenses', []),
+		)
 	
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_get_code_lens_and_range(self, script_path, load_yaml):
 		# prepare the calculator
@@ -151,20 +149,21 @@ class TestMROCalculator:
 		lenses = [t[0] for t in fetched]
 		ranges = [t[1] for t in fetched]
 		# check the code lenses are correct
-		TestUtils.compare_code_lenses(lenses, load_yaml['code_lenses'])
+		TestUtils.compare_code_lenses(
+			lenses,
+			load_yaml.get('code_lenses', []),
+		)
 		# check the ranges are correct
 		locations = [
 			(
 				lens['location'][0], lens['location'][1]
-			) for lens in load_yaml['code_lenses']
+			) for lens in load_yaml.get('code_lenses', [])
 		]
 		TestUtils.assert_locations_in_ranges(ranges, locations)
 
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_is_original_class(self, script_path, load_yaml):
 		# prepare the calculator
@@ -182,15 +181,15 @@ class TestMROCalculator:
 		for name in script.get_names():
 			if calculator._is_original_class(name, context):
 				n_original += 1
-		assert n_original == len(load_yaml['code_lenses'])
+		assert n_original == len(load_yaml.get('code_lenses', []))
 	
 	@pytest.mark.parametrize(
-		['script_path', 'yaml_path'],
+		'script_path',
 		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
+			s for s, _ in EX_YAML_PAIRS
 		],
 	)
-	def test_parse_class_by_jedi_name(self, script_path, load_yaml):
+	def test_parse_class_by_jedi_name(self, script_path):
 		# prepare the calculator
 		calculator = TestUtils.prepare_calculator(script_path)
 		# update the script
@@ -201,6 +200,9 @@ class TestMROCalculator:
 		from python_server.parsed_package_class import ParsedPackageClass
 		from python_server.parsed_custom_class import ParsedCustomClass
 		for name in script.get_names():
+			# ignore the names that are not about class declarations
+			if name.type != 'class':
+				continue
 			parsed_class = calculator.parse_class_by_jedi_name(name)
 			if calculator._is_original_class(name, context):
 				assert isinstance(parsed_class, ParsedCustomClass)

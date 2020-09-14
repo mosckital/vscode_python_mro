@@ -1,0 +1,26 @@
+# expected results (code lenses and negative cases) for the
+# complex_mro.py file
+# the line and character of the locations are 0-based according to the
+# Language Server Protocol, the Python MRO language server will convert from
+# 0-based to 1-based (for Jedi or editor line count) internally if required
+code_lenses:
+  - location: [9, 6]
+    mro: ['O', 'object']
+  - location: [11, 6]
+    mro: ['A', 'O', 'object']
+  - location: [13, 6]
+    mro: ['B', 'O', 'object']
+  - location: [15, 6]
+    mro: ['C', 'O', 'object']
+  - location: [17, 6]
+    mro: ['D', 'O', 'object']
+  - location: [19, 6]
+    mro: ['E', 'O', 'object']
+  - location: [21, 6]
+    mro: ['K1', 'A', 'B', 'C', 'O', 'object']
+  - location: [23, 6]
+    mro: ['K2', 'D', 'B', 'E', 'O', 'object']
+  - location: [25, 6]
+    mro: ['K3', 'D', 'A', 'O', 'object']
+  - location: [27, 6]
+    mro: ['Z', 'K1', 'K2', 'K3', 'D', 'A', 'B', 'C', 'E', 'O', 'object']

@@ -16,12 +16,12 @@ class MROCalculator:
     def __init__(
             self,
             root_dir: str,
-            content_cache: Dict[str, Sequence[str]]
         ) -> None:
         self.root_dir = root_dir
         self.project = jedi.Project(path=root_dir)
-        # content cache will be maintained by MROAnalyser, not in this class
-        self.content_cache = content_cache
+        # cache the actual codes as lines
+        # this cache is very useful as there will be unsaved changes
+        self.content_cache: Dict[str, Sequence[str]] = {}
         # script path -> Jedi script
         self.jedi_scripts_by_path : Dict[str, Script] = {}
         # script path -> ParsedClass list of the script
@@ -31,6 +31,64 @@ class MROCalculator:
         # set of the outdated scripts' path
         self.outdated_scripts : Set[str] = set()
 
+    def replace_content_in_cache(self, script_path: str, content: str) -> None:
+        """
+        To replace the cached content of a script by the new content.
+
+        Args:
+            script_path: the path of the target script
+            content: the new content
+        """
+        lines = content.splitlines()
+        # to add an empty line at the end if necessary as splitlines() will not
+        # add an empty line if the last character is end of line `\n`
+        if not content or content[-1] == '\n':
+            lines.append('')
+        # update the content cache
+        self.content_cache[script_path] = lines
+        # to mark the outdated script
+        # this may lead to better performance in case of sequence of small
+        # incremental changes
+        self.mark_script_outdated(script_path)
+
+    def update_content_in_cache(self, script_path: str, start_pos: Tuple[int,
+                                                                      int],
+                              end_pos: Tuple[int, int], change: str) -> None:
+        """
+        To update the cached content of a script by an incremental change.
+
+        Args:
+            script_path: the path of the target script
+            start_pos: the start position (inclusive) of the changes, in format
+                of (line, character)
+            end_pos: the end position (exclusive) of the changes, in format of
+                (line, character)
+            change: the text of the incremental changes
+        """
+        # fetch the lines of the old content
+        lines = self.content_cache[script_path]
+        # decompose the start and end positions
+        start_line, start_char = start_pos
+        end_line, end_char = end_pos
+        update_lines = change.splitlines()
+        if not change or change[-1] == '\n':
+            update_lines.append('')
+        # the lines of the new content is consisted of three parts:
+        new_lines = []  # placeholder for the new contents
+        # 1. from the start of old content to the start position of the change
+        new_lines.extend(lines[:start_line])
+        new_lines.append(lines[start_line][:start_char])
+        # 2. the change
+        new_lines[-1] += (update_lines[0] if update_lines else '')
+        new_lines.extend(update_lines[1:])
+        # 3. from the end of the change to the end of the old content
+        new_lines[-1] += lines[end_line][end_char:]
+        new_lines.extend(lines[end_line + 1:])
+        # update the content cache
+        self.content_cache[script_path] = new_lines
+        # to mark the outdated script
+        self.mark_script_outdated(script_path)
+
     def _update_script(self, script_path: str):
         """
         To update the Jedi script and the ParsedClass list based on the given
@@ -39,6 +97,9 @@ class MROCalculator:
         Args:
             script_path: the path of the target script
         """
+        # remove the script out of the `outdated_scripts` to avoid infinite loop
+        self.outdated_scripts.remove(script_path)
+        # nothing to do if the script is not cached
         if script_path not in self.content_cache:
             return
         script = jedi.Script(
@@ -85,9 +146,10 @@ class MROCalculator:
         """
         Update all the outdated scripts.
         """
-        for outdated_path in self.outdated_scripts:
+        # use a copy of the set as `self._update_script()`` will modify the set
+        # in iteration
+        for outdated_path in self.outdated_scripts.copy():
             self._update_script(outdated_path)
-        self.outdated_scripts.clear()
     
     def update_one(self, script_path: str):
         """
@@ -98,7 +160,6 @@ class MROCalculator:
         """
         if script_path in self.outdated_scripts:
             self._update_script(script_path)
-            self.outdated_scripts.remove(script_path)
     
     def get_code_lens(self, script_path: str) -> Sequence[Dict]:
         """
@@ -156,10 +217,14 @@ class MROCalculator:
             `True` if the class is an originally defined class or `False`
             otherwise
         """
-        if not script_context.full_name:
+        if not script_context.module_name:
             return class_name.type == 'class'
-        return class_name.type == 'class' and class_name.full_name.startswith(
-            script_context.full_name)
+        # use `class_name.goto()[0]` to fetch the full content Jedi Name which
+        # has the `full_name` field
+        return class_name.type == 'class' and \
+            class_name.goto()[0].full_name.startswith(
+            script_context.module_name
+        )
     
     def parse_class_by_jedi_name(
         self, jedi_name: Name
@@ -184,7 +249,9 @@ class MROCalculator:
         # type should be `class`. There is case that the first condition is
         # satisfied but the second not, like a type alias definition/assignment
         # has a type `statement`.
-        if jedi_name.full_name.startswith(
+        # use `class_name.goto()[0]` to fetch the full content Jedi Name which
+        # has the `full_name` field
+        if jedi_name.goto()[0].full_name.startswith(
             jedi_name.module_name
         ) and jedi_name.type == 'class':
             return ParsedCustomClass(jedi_name, self)

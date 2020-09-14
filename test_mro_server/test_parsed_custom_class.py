@@ -1,14 +1,11 @@
 import ast
+from python_server.parsed_class import ParsedClass
 import pytest
 from os import path
 from typing import Dict
 from jedi.api import Script
 from python_server.calculator import MROCalculator
-from test_mro_server.test_utils import TestUtils, load_yaml
-
-
-DIAMOND_FILE_PATH = path.join(TestUtils.EXAMPLE_FILE_ROOT, 'diamond.py')
-DIAMOND_STATS_PATH = path.join(TestUtils.YAML_FILE_ROOT, 'diamond_stats.yml')
+from test_mro_server.test_utils import TestUtils, EX_YAML_PAIRS, load_yaml
 
 
 class TestParsedCustomClass:
@@ -36,16 +33,14 @@ class TestParsedCustomClass:
 
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_get_code_lines(self, script_path, load_yaml):
 		calculator, script = self.prepare_calculator_and_script(script_path)
 		# get the original lines of the script
 		script_lines = calculator.content_cache[script_path]
 		# check against every custom defined class
-		for expected in load_yaml['code_lenses']:
+		for expected in load_yaml.get('code_lenses', []):
 			parsed_class = self.construct_parsed_custom_class(
 				calculator, script, expected
 			)
@@ -60,14 +55,12 @@ class TestParsedCustomClass:
 		
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_get_class_def_ast_from_lines(self, script_path, load_yaml):
 		calculator, script = self.prepare_calculator_and_script(script_path)
 		# check against every custom defined class
-		for expected in load_yaml['code_lenses']:
+		for expected in load_yaml.get('code_lenses', []):
 			parsed_class = self.construct_parsed_custom_class(
 				calculator, script, expected
 			)
@@ -79,20 +72,22 @@ class TestParsedCustomClass:
 	
 	@pytest.mark.parametrize(
 		['script_path', 'yaml_path'],
-		[
-			[DIAMOND_FILE_PATH, DIAMOND_STATS_PATH],
-		],
+		EX_YAML_PAIRS,
 	)
 	def test_mro_parsed_list(self, script_path, load_yaml):
 		calculator, script = self.prepare_calculator_and_script(script_path)
 		# check against every custom defined class
-		for expected in load_yaml['code_lenses']:
+		for expected in load_yaml.get('code_lenses', []):
 			parsed_class = self.construct_parsed_custom_class(
 				calculator, script, expected
 			)
-			# check the parsed mro list against the expected result
-			parsed_mro_list = parsed_class.mro_parsed_list
-			assert [p.jedi_name.name for p in parsed_mro_list] == expected['mro']
+			if expected['mro'] == [ParsedClass.CONFLICT_MRO_MSG]:
+				with pytest.raises(TypeError):
+					parsed_mro_list = parsed_class.mro_parsed_list
+			else:
+				# check the parsed mro list against the expected result
+				parsed_mro_list = parsed_class.mro_parsed_list
+				assert [p.jedi_name.name for p in parsed_mro_list] == expected['mro']
 
 
 from python_server.parsed_custom_class import ParsedCustomClass

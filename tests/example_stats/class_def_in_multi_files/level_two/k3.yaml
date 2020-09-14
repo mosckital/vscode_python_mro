@@ -1,0 +1,8 @@
+# expected results (code lenses and negative cases) for the
+# class_def_in_multi_files/level_two/k3.py file
+# the line and character of the locations are 0-based according to the
+# Language Server Protocol, the Python MRO language server will convert from
+# 0-based to 1-based (for Jedi or editor line count) internally if required
+code_lenses:
+  - location: [13, 6]
+    mro: ['K3', 'D', 'A', 'O', 'object']

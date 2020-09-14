@@ -1,21 +1,88 @@
+from __future__ import annotations
 from python_server.calculator import MROCalculator
 import pytest
 import yaml
 import glob
 from os import path
 from random import randint
-from typing import Callable, Generator, Tuple, List
+from typing import Callable, Generator, Sequence, Tuple, List
 from python_server.analyser import MROAnalyser
 
 
 class TestUtils:
+	"""This class encapsulates the common utility functions for testing."""
 
 	TEST_FILE_ROOT = path.abspath(path.dirname(__file__))
 	"""The root directory of the pytest files."""
+	TEST_FILE_ROOT_CHECKER = lambda f: path.isfile(f) \
+				and path.basename(f).startswith('test_') \
+				and (path.splitext(f)[1] == '.py')
+	"""The checker to test if a file is a test file."""
+
 	EXAMPLE_FILE_ROOT = path.abspath(path.join(TEST_FILE_ROOT, '..', 'tests', 'examples'))
 	"""The root directory of the example python files."""
+	EXAMPLE_FILE_ROOT_CHECKER = lambda f: path.isfile(f) \
+				and (path.splitext(f)[1] == '.py')
+	"""The checker to test if a file is an example file."""
+
 	YAML_FILE_ROOT = path.abspath(path.join(TEST_FILE_ROOT, '..', 'tests', 'example_stats'))
 	"""The root directory of the yaml files."""
+	YAML_FILE_ROOT_CHECKER = lambda f: path.isfile(f) \
+				and (path.splitext(f)[1] in ['.yml', '.yaml'])
+	"""The checker to test if a file is a yaml file."""
+
+	@staticmethod
+	def get_target_files(dir: str, ext: str = None):
+		"""
+		Get the target files in a directory recursively by ignoring the
+		unimportant files.
+
+		Args:
+			dir: the root directory to search
+			ext: the specific extension to search
+		
+		Returns:
+			A set of the target files.
+		"""
+		if not ext:
+			ext = ''
+		candidates = set(
+			glob.iglob(
+				path.join(dir, '**/[!_]*' + ext), recursive=True
+			)
+		) - set(
+			glob.iglob(
+				path.join(dir, '**/__pycache__/*'), recursive=True
+			)
+		)
+		return [c for c in candidates if path.isfile(c)]
+
+	@classmethod
+	def get_example_stats_pairs(
+		cls, ex_dir: str, stats_dir: str
+	) -> Sequence[Tuple[str, str]]:
+		"""
+		Get a list of pairs of example file and its corresponding stats YAML
+		file, based on the given root directories and in a recursive manner.
+
+		Args:
+			ex_dir: the root directory for the example files
+			stats_dir: the root directory for the statistics YAML file
+		
+		Returns:
+			A list of found pairs of example files and stats files
+		"""
+		ret = []
+		for ex_path in cls.get_target_files(ex_dir):
+			# check if it's an example file
+			if cls.EXAMPLE_FILE_ROOT_CHECKER(ex_path):
+				no_ext_path = path.splitext(ex_path)[0]
+				stats_path = no_ext_path.replace(ex_dir, stats_dir) + '.yaml'
+				# check if the corresponding stats file exists
+				if path.exists(stats_path) and path.isfile(stats_path) and \
+					cls.YAML_FILE_ROOT_CHECKER(stats_path):
+					ret.append((ex_path, stats_path))
+		return ret
 
 	@staticmethod
 	def gen_random_line(min_len: int, max_len: int = 0) -> str:
@@ -101,6 +168,12 @@ class TestUtils:
 			assert ran[0] <= loc < ran[1]
 
 
+EX_YAML_PAIRS = TestUtils.get_example_stats_pairs(
+	TestUtils.EXAMPLE_FILE_ROOT, TestUtils.YAML_FILE_ROOT
+)
+"""The list of all the pairs for example file and its stats yaml file."""
+
+
 @pytest.fixture
 def load_yaml(yaml_path: str) -> Generator[dict, None, None]:
 	"""The test fixture to load a yaml file.
@@ -119,31 +192,40 @@ class TestTestUtils:
 	"""Test suite for the test utility functions or variables."""
 
 	@pytest.mark.parametrize(
+		['ex_dir', 'stats_dir'],
+		[
+			(TestUtils.EXAMPLE_FILE_ROOT, TestUtils.YAML_FILE_ROOT),
+		]
+	)
+	def test_get_example_stats_pairs(self, ex_dir: str, stats_dir: str):
+		"""Test if get_example_stats_pairs() can generate correct pair list."""
+		pairs = TestUtils.get_example_stats_pairs(ex_dir, stats_dir)
+		ex_paths = TestUtils.get_target_files(ex_dir)
+		stats_paths = TestUtils.get_target_files(stats_dir)
+		assert len(pairs) == len(ex_paths) == len(stats_paths)
+
+	@pytest.mark.parametrize(
 		['file_root', 'checker'],
 		[
 			[
 				TestUtils.TEST_FILE_ROOT,
-				lambda f: path.isfile(f)
-				and path.basename(f).startswith('test_')
-				and (path.splitext(f)[1] == '.py'),
+				TestUtils.TEST_FILE_ROOT_CHECKER,
 			],
 			[
 				TestUtils.EXAMPLE_FILE_ROOT,
-				lambda f: path.isfile(f)
-				and (path.splitext(f)[1] == '.py'),
+				TestUtils.EXAMPLE_FILE_ROOT_CHECKER,
 			],
 			[
 				TestUtils.YAML_FILE_ROOT,
-				lambda f: path.isfile(f)
-				and (path.splitext(f)[1] in ['.yml', '.yaml']),
+				TestUtils.YAML_FILE_ROOT_CHECKER,
 			],
 		]
 	)
 	def test_file_root(self, file_root: str, checker: Callable[[str], bool]):
-		"""Test if a file root is containing the correct files. """
-		for file_path in glob.iglob(
-				path.join(file_root, '**[!__pycache__]/*'), recursive=True
-			):
+		"""Test if a file root is containing the correct files."""
+		candidate_set = TestUtils.get_target_files(file_root)
+		assert len(candidate_set) > 0
+		for file_path in candidate_set:
 			assert checker(file_path), f'{file_path} has failed check...'
 
 	@pytest.mark.parametrize('n_exec', [1000])
@@ -156,7 +238,7 @@ class TestTestUtils:
 	@pytest.mark.parametrize(
 		['file_path', 'yaml_path'],
 		[
-			(path.join(TestUtils.YAML_FILE_ROOT, 'diamond_stats.yml'), ) * 2,
+			(yaml_path, yaml_path) for _, yaml_path in EX_YAML_PAIRS
 		]
 	)
 	def test_load_yaml(self, load_yaml, file_path):

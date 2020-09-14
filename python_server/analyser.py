@@ -17,11 +17,8 @@ class MROAnalyser:
     def __init__(self, root_dir: str) -> None:
         # the root path of the Python project directory
         self.root_dir = root_dir
-        # cache the actual codes as lines
-        # this cache is very useful as there will be unsaved changes
-        self.content_cache: Dict[str, Sequence[str]] = {}
         # the MRO calculator responsible for all MRO relevant calculations
-        self.calculator = MROCalculator(self.root_dir, self.content_cache)
+        self.calculator = MROCalculator(self.root_dir)
 
     def replace_script_content(self, script_path: str, content: str) -> None:
         """
@@ -31,17 +28,7 @@ class MROAnalyser:
             script_path: the path of the target script
             content: the new content
         """
-        lines = content.splitlines()
-        # to add an empty line at the end if necessary as splitlines() will not
-        # add an empty line if the last character is end of line `\n`
-        if not content or content[-1] == '\n':
-            lines.append('')
-        # update the content cache
-        self.content_cache[script_path] = lines
-        # to mark the outdated script in calculator
-        # this may lead to better performance in case of sequence of small
-        # incremental changes
-        self.calculator.mark_script_outdated(script_path)
+        self.calculator.replace_content_in_cache(script_path, content)
 
     def update_script_content(self, script_path: str, start_pos: Tuple[int,
                                                                       int],
@@ -57,29 +44,7 @@ class MROAnalyser:
                 (line, character)
             change: the text of the incremental changes
         """
-        # fetch the lines of the old content
-        lines = self.content_cache[script_path]
-        # decompose the start and end positions
-        start_line, start_char = start_pos
-        end_line, end_char = end_pos
-        update_lines = change.splitlines()
-        if not change or change[-1] == '\n':
-            update_lines.append('')
-        # the lines of the new content is consisted of three parts:
-        new_lines = []  # placeholder for the new contents
-        # 1. from the start of old content to the start position of the change
-        new_lines.extend(lines[:start_line])
-        new_lines.append(lines[start_line][:start_char])
-        # 2. the change
-        new_lines[-1] += (update_lines[0] if update_lines else '')
-        new_lines.extend(update_lines[1:])
-        # 3. from the end of the change to the end of the old content
-        new_lines[-1] += lines[end_line][end_char:]
-        new_lines.extend(lines[end_line + 1:])
-        # update the content cache
-        self.content_cache[script_path] = new_lines
-        # to mark the outdated script in calculator
-        self.calculator.mark_script_outdated(script_path)
+        self.calculator.update_content_in_cache(script_path, start_pos, end_pos, change)
 
     def update_fetch_code_lens(self, script_path: str) -> Sequence[Dict]:
         """

@@ -1,0 +1,15 @@
+# expected results (code lenses and negative cases) for the
+# conflict_mro.py file
+# the line and character of the locations are 0-based according to the
+# Language Server Protocol, the Python MRO language server will convert from
+# 0-based to 1-based (for Jedi or editor line count) internally if required
+code_lenses:
+  # the class declarations that have no conflict in MRO list
+  - location: [5, 6]
+    mro: ['O', 'object']
+  - location: [7, 6]
+    mro: ['A', 'O', 'object']
+  - location: [9, 6]
+    mro: ['B', 'A', 'O', 'object']
+  - location: [11, 6]
+    mro: ['Conflict MRO!!!']
