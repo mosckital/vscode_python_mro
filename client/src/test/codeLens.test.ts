@@ -5,7 +5,7 @@ import { getDocUri, activate, addContent, readYamlFile, waitFor } from './helper
 suite('Should show CodeLens', () => {
 	const docUri = getDocUri('diamond.py');
 
-	const testFileData = readYamlFile('diamond_stats.yml') as {
+	const testFileData = readYamlFile('diamond.yaml') as {
 		code_lenses: any[],
 		negative_cases: any[],
 		dummy_content: string[],
@@ -53,7 +53,7 @@ async function testCodeLenses(
 		docUri
 	)) as vscode.CodeLens[];
 	// check the number of code lenses is correct
-	assert.equal(actualCodeLenses.length, expectedCodeLenses.length);
+	assert.strictEqual(actualCodeLenses.length, expectedCodeLenses.length);
 	// resolve the code lenses and check the contents are correct
 	actualCodeLenses = (await vscode.commands.executeCommand(
 		'vscode.executeCodeLensProvider',
@@ -70,8 +70,8 @@ async function testCodeLenses(
 				assert.ok(lens.command);
 				let content = lens.command.arguments[0] as string;
 				let lines = content.split('\n');
-				assert.equal(lines.length, expected.mro.length);
-				assert.deepEqual(lines, expected.mro);
+				assert.strictEqual(lines.length, expected.mro.length);
+				assert.deepStrictEqual(lines, expected.mro);
 				found = true;
 			}
 		});

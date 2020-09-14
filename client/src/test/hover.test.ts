@@ -5,7 +5,7 @@ import { getDocUri, activate, readYamlFile } from './helper';
 suite('Should show Hover', () => {
 	const docUri = getDocUri('diamond.py');
 
-	const testFileData = readYamlFile('diamond_stats.yml') as {
+	const testFileData = readYamlFile('diamond.yaml') as {
 		code_lenses: any[],
 		negative_cases: any[],
 		dummy_content: string[],
@@ -66,7 +66,7 @@ async function testHovers(
 			assert.ok(foundHover);
 		} else {
 			// case of not expecting a hover result
-			assert.equal(hoverResults.length, 0);
+			assert.strictEqual(hoverResults.length, 0);
 		}
 	}
 }
