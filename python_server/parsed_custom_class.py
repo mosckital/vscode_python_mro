@@ -127,7 +127,7 @@ class ParsedCustomClass(ParsedClass):
             head = mro_list[0]
             good_head = True
             # check the head candidate is not in any other list tail
-            for cmp_list in sublists[i + 1:]:
+            for cmp_list in sublists[:]:
                 for parsed in cmp_list[1:]:
                     if head == parsed:
                         good_head = False
@@ -145,4 +145,4 @@ class ParsedCustomClass(ParsedClass):
                     if new_list:
                         next_list.append(new_list)
                 return [head] + cls._merge_mro_parsed_lists(next_list)
-        return []
+        raise TypeError('Cannot construct MRO list as conflict exists')

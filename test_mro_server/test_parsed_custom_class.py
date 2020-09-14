@@ -1,4 +1,5 @@
 import ast
+from python_server.parsed_class import ParsedClass
 import pytest
 from os import path
 from typing import Dict
@@ -80,9 +81,13 @@ class TestParsedCustomClass:
 			parsed_class = self.construct_parsed_custom_class(
 				calculator, script, expected
 			)
-			# check the parsed mro list against the expected result
-			parsed_mro_list = parsed_class.mro_parsed_list
-			assert [p.jedi_name.name for p in parsed_mro_list] == expected['mro']
+			if expected['mro'] == [ParsedClass.CONFLICT_MRO_MSG]:
+				with pytest.raises(TypeError):
+					parsed_mro_list = parsed_class.mro_parsed_list
+			else:
+				# check the parsed mro list against the expected result
+				parsed_mro_list = parsed_class.mro_parsed_list
+				assert [p.jedi_name.name for p in parsed_mro_list] == expected['mro']
 
 
 from python_server.parsed_custom_class import ParsedCustomClass
