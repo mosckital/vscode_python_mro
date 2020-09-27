@@ -57,8 +57,9 @@ export function activate(context: ExtensionContext) {
     // get extension root path
     let extPath = extensions.getExtension('kaiyan.python-mro').extensionPath;
     // use spawn to run the long-live MRO server instead of using 
-    mroServerProcess = cp.spawn('pipenv', [
-        'run', 'python -m python_server.server'
+    mroServerProcess = cp.spawn('python3', [
+        // 'run', 'python -m python_server.server'
+        '-m mrols.server'
     ], {
         cwd: extPath,
         shell: true,
