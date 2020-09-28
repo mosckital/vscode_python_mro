@@ -11,7 +11,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        python-version: [3.7, 3.8]
+        python-version: [3.6, 3.7, 3.8]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Checkout
@@ -25,13 +25,10 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{matrix.python-version}}
-    - name: Install pipenv and python packages
+    - name: Install Python MRO Language Server
       run: |
         python -m pip install --upgrade pip
-        pip install pipenv
-        pipenv install --dev --python ${{matrix.python-version}}
-    - name: Run Language Server unit tests
-      run: pipenv run pytest -v -s
+        pip install python-mro-language-server
     - name: Run Extension E2E tests
       uses: GabrielBB/xvfb-action@v1.2
       with:
