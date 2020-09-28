@@ -4,6 +4,7 @@ import {
 } from 'vscode-languageclient';
 import { ExtensionContext, window, commands, extensions } from "vscode";
 import * as cp from "child_process";
+import * as getPort from "get-port";
 
 // module-level variable place holders
 let client : LanguageClient;
@@ -19,11 +20,20 @@ async function sleep(ms: number) {
 
 export function activate(context: ExtensionContext) {
     let connectionEstablished = false;
+
+    // get an available port and start the MRO server
+    let connectionPort = 0;
+    (async () => {
+        connectionPort = await getPort({port: [3000, 3001, 3002]});
+        console.info(`using port ${connectionPort}`);
+        startMroServer(connectionPort);
+    })();
+
     // server options knows how to connect to the MRO server
     const serverOptions: ServerOptions = function() {
 		return new Promise((resolve, reject) => {
             let socketClient = new net.Socket();
-			socketClient.connect(3000, "127.0.0.1", function() {
+			socketClient.connect(connectionPort, "127.0.0.1", function() {
                 connectionEstablished = true;
 				resolve({
                     reader: socketClient,
@@ -54,12 +64,26 @@ export function activate(context: ExtensionContext) {
     // register command
     context.subscriptions.push(commands.registerCommand(showMroCommand, showMroHandler));
 
+    // delay the start of the client until the MRO server is connected
+    (async () => {
+        let startWaitTime = Date.now();
+        while (!connectionEstablished) {
+            await sleep(1000);
+            if (Date.now() - startWaitTime > 3000) {
+                break;
+            }
+        }
+        client.start();
+    })();
+}
+
+function startMroServer(port: number) {
     // get extension root path
     let extPath = extensions.getExtension('kaiyan.python-mro').extensionPath;
     // use spawn to run the long-live MRO server instead of using 
     mroServerProcess = cp.spawn('python3', [
         // 'run', 'python -m python_server.server'
-        '-m mrols.server'
+        '-m mrols.server', `${port}`
     ], {
         cwd: extPath,
         shell: true,
@@ -79,18 +103,6 @@ export function activate(context: ExtensionContext) {
     });
     // kill the MRO server process in case of abnormal exit, like in unit test
     process.on('exit', killMROServerProcess);
-
-    // delay the start of the client until the MRO server is connected
-    (async () => {
-        let startWaitTime = Date.now();
-        while (!connectionEstablished) {
-            await sleep(1000);
-            if (Date.now() - startWaitTime > 3000) {
-                break;
-            }
-        }
-        client.start();
-    })();
 }
 
 export function deactivate(): Thenable<void> | undefined {
