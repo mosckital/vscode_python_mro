@@ -8,21 +8,21 @@ suite('Should show CodeLens', () => {
 		let finishedNegativeCases = false;
 
 		if (statsObj.code_lenses) {
-			test('Check CodeLenses are corrected identified', async () => {
+			test(`Check CodeLenses are corrected identified for ${exUri}`, async () => {
 				await testCodeLenses(exUri, statsObj.code_lenses);
 				finishedCodeLenses = true;
 			});
 		}
 
 		if (statsObj.negative_cases) {
-			test('Check against the negative cases', async () => {
+			test(`Check against the negative cases for ${exUri}`, async () => {
 				await testNegativeCases(exUri, statsObj.negative_cases);
 				finishedNegativeCases = true;
 			});
 		}
 
 		if (statsObj.dummy_content && statsObj.dummy_code_lens) {
-			test('Check correctness after adding content', async () => {
+			test(`Check correctness after adding content for ${exUri}`, async () => {
 				// we should wait until the tests on the original content have finished
 				await waitFor(() => (finishedCodeLenses && finishedNegativeCases), 3000);
 				let newContent = statsObj.dummy_content.join('\n');
