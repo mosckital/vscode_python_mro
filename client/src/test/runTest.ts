@@ -21,7 +21,8 @@ async function main() {
 			extensionDevelopmentPath,
 			extensionTestsPath,
 			launchArgs: [
-				'--disable-extensions'
+				'--disable-extensions',
+				path.resolve(__dirname, '../../../tests/examples')
 			]
 		});
 	} catch (err) {

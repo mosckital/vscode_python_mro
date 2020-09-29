@@ -40,7 +40,8 @@
 		"compile": "tsc -b",
 		"watch": "tsc -b -w",
 		"postinstall": "cd client && npm install && cd ..",
-		"test": "sh ./tests/e2e.sh"
+		"test": "node ./client/out/test/runTest",
+		"test_windows": "node .\\client\\out\\test\\runTest"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
