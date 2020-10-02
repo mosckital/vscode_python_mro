@@ -42,3 +42,21 @@ Currently there is no setting option available to the user. But they will become
 ## Release Notes
 
 Please refer to the [CHANGELOG](./CHANGELOG.md).
+
+## Incoming Features
+
+The following list includes the features to add into the Python MRO extension in the next releases.
+
+* Add Support to Language Server's New Features
+  * Hover:
+    * add support to show MRO list when hovering over a class instance
+    * add support to show the which class in the MRO list will provide the actual implementation when hovering over a method of a class instance (lower priority, scheduled after finishing the other features)
+  * CodeLens:
+    * change the way to show MRO list when clicking a code lens from showing in a pop-up message window to showing in a side panel like [what GitLens does](https://github.com/eamodio/vscode-gitlens#git-code-lens-).
+* Project Reliability
+  * increase the readability of the documentations
+  * add logging to the whole scope of the project and save the last logs in file
+
+## Contribution
+
+Any contribution is welcomed!
