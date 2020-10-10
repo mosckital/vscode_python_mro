@@ -12,6 +12,31 @@ let mroServerProcess : cp.ChildProcess;
 let outputChannel : OutputChannel;
 
 /**
+ * The enumerations of the possible logging levels.
+ */
+enum LogLevel {
+    DEBUG,
+    INFO,
+    WARNING,
+    ERROR,
+}
+
+// the logging level threshold
+let loggingLevel = LogLevel.DEBUG;
+
+/**
+ * Show the logging information in the provided output channel.
+ * @param output the output channel to show
+ * @param level the level string of the logging information level
+ * @param msg the message to log
+ */
+function logToOutput(output: OutputChannel, level: LogLevel, msg: string) {
+    if (level > loggingLevel) {
+        output.appendLine(`[${new Date().toLocaleTimeString()}]-${LogLevel[level]}: ${msg}`);
+    }
+}
+
+/**
  * Async sleep.
  * @param ms - milliseconds to sleep
  */
@@ -29,21 +54,21 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(outputChannel);
 
     // get an available port and start the MRO server
-    outputChannel.appendLine(`Ready to get an available port and to start the MRO server`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to get an available port and to start the MRO server`);
     let connectionPort = 0;
     (async () => {
         connectionPort = await getPort({port: [3000, 3001, 3002]});
-        outputChannel.appendLine(`Got an available port ${connectionPort}`);
+        logToOutput(outputChannel, LogLevel.INFO, `Got an available port ${connectionPort}`);
         // console.info(`using port ${connectionPort}`);
         startMroServer(connectionPort);
     })();
 
     // server options knows how to connect to the MRO server
-    outputChannel.appendLine(`Ready to define the ServerOptions`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to define the ServerOptions`);
     const serverOptions: ServerOptions = function() {
 		return new Promise((resolve, reject) => {
             let socketClient = new net.Socket();
-            outputChannel.appendLine(`Ready to connect to the MRO server via socket`);
+            logToOutput(outputChannel, LogLevel.INFO, `Ready to connect to the MRO server via socket`);
 			socketClient.connect(connectionPort, "127.0.0.1", function() {
                 connectionEstablished = true;
 				resolve({
@@ -54,13 +79,13 @@ export function activate(context: ExtensionContext) {
 		});
     };
     // the language client options
-    outputChannel.appendLine(`Ready to define the LanguageClientOptions`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to define the LanguageClientOptions`);
     let clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'python' }]
     };
 
     // create the language client
-    outputChannel.appendLine(`Ready to instantiate a LanguageClient`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to instantiate a LanguageClient`);
     client = new LanguageClient(
         'pythonMro',
         extTitle,
@@ -69,7 +94,7 @@ export function activate(context: ExtensionContext) {
     );
 
     // define the command handler for the show MRO command
-    outputChannel.appendLine(`Ready to register the show MRO command`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to register the show MRO command`);
     let showMroCommand = 'pythonMRO.showMRO';
     const showMroHandler = (content: string = 'No MRO List provided!') => {
         // show the MRO list in the right bottom pop-up box
@@ -77,12 +102,12 @@ export function activate(context: ExtensionContext) {
     };
     // register command
     context.subscriptions.push(commands.registerCommand(showMroCommand, showMroHandler));
-    outputChannel.appendLine(`Finished the registration of the show MRO command`);
+    logToOutput(outputChannel, LogLevel.INFO, `Finished the registration of the show MRO command`);
 
     // delay the start of the client until the MRO server is connected
-    outputChannel.appendLine(`Ready to wait for the launch of MRO server and to start the client`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to wait for the launch of MRO server and to start the client`);
     (async () => {
-        outputChannel.appendLine(`Wait for the start of the MRO server`);
+        logToOutput(outputChannel, LogLevel.INFO, `Wait for the start of the MRO server`);
         let startWaitTime = Date.now();
         while (!connectionEstablished) {
             await sleep(1000);
@@ -90,14 +115,14 @@ export function activate(context: ExtensionContext) {
                 break;
             }
         }
-        outputChannel.appendLine(`MRO server is ready`);
-        outputChannel.appendLine(`Ready to start the client`);
+        logToOutput(outputChannel, LogLevel.INFO, `MRO server is ready`);
+        logToOutput(outputChannel, LogLevel.INFO, `Ready to start the client`);
         client.start();
     })();
 }
 
 function startMroServer(port: number) {
-    outputChannel.appendLine(`Ready to start MRO Server`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to start MRO Server`);
     // get extension root path
     let extPath = extensions.getExtension('kaiyan.python-mro').extensionPath;
     // use spawn to run the long-live MRO server instead of using 
@@ -109,7 +134,7 @@ function startMroServer(port: number) {
         shell: true,
         detached: true
     });
-    outputChannel.appendLine(`MRO server process spawned`);
+    logToOutput(outputChannel, LogLevel.INFO, `MRO server process spawned`);
     // unreference the MRO server process
     mroServerProcess.unref();
     // redirect the MRO server process I/O into this main process
@@ -124,11 +149,11 @@ function startMroServer(port: number) {
     });
     // kill the MRO server process in case of abnormal exit, like in unit test
     process.on('exit', killMROServerProcess);
-    outputChannel.appendLine(`MRO server handlers registered`);
+    logToOutput(outputChannel, LogLevel.INFO, `MRO server handlers registered`);
 }
 
 export function deactivate(): Thenable<void> | undefined {
-    outputChannel.appendLine(`Ready to deactivate the Python MRO extension`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to deactivate the Python MRO extension`);
     if (!client) {
         return undefined;
     }
@@ -138,7 +163,7 @@ export function deactivate(): Thenable<void> | undefined {
 }
 
 async function killMROServerProcess() {
-    outputChannel.appendLine(`Ready to kill the MRO server process`);
+    logToOutput(outputChannel, LogLevel.INFO, `Ready to kill the MRO server process`);
     let startKillTime = Date.now();
     while (!mroServerProcess.killed) {
         console.log(`Stopping the Python MRO language server process of PID ${mroServerProcess.pid}`);
@@ -152,6 +177,6 @@ async function killMROServerProcess() {
             return Promise.resolve(false);
         }
     }
-    outputChannel.appendLine(`MRO server process is killed`);
+    logToOutput(outputChannel, LogLevel.INFO, `MRO server process is killed`);
     return Promise.resolve(true);
 }
