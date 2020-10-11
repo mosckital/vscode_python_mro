@@ -71,6 +71,7 @@ export function activate(context: ExtensionContext) {
             logToOutput(outputChannel, LogLevel.INFO, `Ready to connect to the MRO server via socket`);
 			socketClient.connect(connectionPort, "127.0.0.1", function() {
                 connectionEstablished = true;
+                logToOutput(outputChannel, LogLevel.INFO, `Connection to MRO server is established`);
 				resolve({
                     reader: socketClient,
                     writer: socketClient
@@ -139,13 +140,13 @@ function startMroServer(port: number) {
     mroServerProcess.unref();
     // redirect the MRO server process I/O into this main process
     mroServerProcess.stdout.on('data', (data) => {
-        console.log(`MRO Server stdout: ${data}`);
+        logToOutput(outputChannel, LogLevel.INFO, `MRO Server stdout:\n${data}`);
     });
     mroServerProcess.stderr.on('data', (data) => {
-        console.error(`MRO Server stderr: ${data}`);
+        logToOutput(outputChannel, LogLevel.WARNING, `MRO Server stderr:\n${data}`);
     });
     mroServerProcess.on('close', (code) => {
-        console.log(`MRO Server process exited with code ${code}`);
+        logToOutput(outputChannel, LogLevel.INFO, `MRO Server process exited with code ${code}`);
     });
     // kill the MRO server process in case of abnormal exit, like in unit test
     process.on('exit', killMROServerProcess);
@@ -155,9 +156,11 @@ function startMroServer(port: number) {
 export function deactivate(): Thenable<void> | undefined {
     logToOutput(outputChannel, LogLevel.INFO, `Ready to deactivate the Python MRO extension`);
     if (!client) {
+        logToOutput(outputChannel, LogLevel.INFO, `No language client was initiated, will terminate the extension`);
         return undefined;
     }
     return killMROServerProcess().then((result) => {
+        logToOutput(outputChannel, LogLevel.INFO, `MRO server process should have been killed`);
         return client.stop();
     });
 }
@@ -174,6 +177,7 @@ async function killMROServerProcess() {
         process.kill(-mroServerProcess.pid);
         await sleep(1000);
         if (Date.now() - startKillTime > 10 * 1000) {
+            logToOutput(outputChannel, LogLevel.WARNING, `Failed to kill the MRO server`);
             return Promise.resolve(false);
         }
     }
