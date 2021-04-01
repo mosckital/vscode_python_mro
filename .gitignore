@@ -3,6 +3,7 @@ out
 node_modules
 .vscode-test/
 *.vsix
+dist
 
 # ignore python relevant files
 __pycache__
